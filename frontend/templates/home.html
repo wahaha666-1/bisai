@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentForge - AI Agent 智能编排平台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        /* 导航栏 */
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .navbar-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+        
+        .logo {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-admin {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        .btn-admin:hover {
+            background: #ee5a52;
+        }
+        
+        /* 主内容 */
+        .hero {
+            text-align: center;
+            padding: 80px 20px;
+            color: white;
+        }
+        
+        .hero h1 {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+        }
+        
+        .hero p {
+            font-size: 1.5em;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .hero-btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 8px;
+        }
+        
+        /* 特性展示 */
+        .features {
+            max-width: 1200px;
+            margin: 60px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+        }
+        
+        .feature-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        
+        .feature-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        .feature-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        /* 统计 */
+        .stats {
+            max-width: 1200px;
+            margin: 60px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        /* 底部 */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: white;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="logo">🤖 AgentForge</div>
+            <div class="nav-buttons">
+                <a href="/admin" class="btn btn-admin">🔧 管理后台</a>
+                <a href="/login" class="btn btn-secondary">登录</a>
+                <a href="/register" class="btn btn-primary">注册</a>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- 主横幅 -->
+    <div class="hero">
+        <h1>🤖 AgentForge</h1>
+        <p>AI Agent 智能编排平台 - 让自动化像搭积木一样简单</p>
+        <div class="hero-buttons">
+            <a href="/register" class="btn btn-primary hero-btn">立即开始</a>
+            <a href="/demo" class="btn btn-secondary hero-btn">查看演示</a>
+        </div>
+    </div>
+    
+    <!-- 统计数据 -->
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number" id="agent-count">0</div>
+            <div class="stat-label">已注册 Agent</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="workflow-count">0</div>
+            <div class="stat-label">工作流</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="user-count">0</div>
+            <div class="stat-label">注册用户</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="execution-count">0</div>
+            <div class="stat-label">总执行次数</div>
+        </div>
+    </div>
+    
+    <!-- 功能特性 -->
+    <div class="features">
+        <div class="feature-card">
+            <div class="feature-icon">🚀</div>
+            <h3>极简开发</h3>
+            <p>一行装饰器注册 Agent，无需复杂配置，开发效率提升 10 倍</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">🔄</div>
+            <h3>工作流编排</h3>
+            <p>可视化 DAG 编排，像搭积木一样组合 AI Agent</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">🤖</div>
+            <h3>AI 集成</h3>
+            <p>原生支持 OpenAI、DeepSeek 等 LLM，轻松构建 AI 应用</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3>完整监控</h3>
+            <p>实时日志、性能统计、成本追踪，一目了然</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">🏗️</div>
+            <h3>企业级架构</h3>
+            <p>三层架构设计，易于扩展和维护</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="feature-icon">🔒</div>
+            <h3>安全可靠</h3>
+            <p>用户认证、权限管理、数据加密</p>
+        </div>
+    </div>
+    
+    <!-- 底部 -->
+    <div class="footer">
+        <p>© 2025 AgentForge - AI Agent 智能编排平台</p>
+        <p>让 AI Agent 编排像搭积木一样简单</p>
+    </div>
+    
+    <script>
+        // 加载统计数据
+        async function loadStats() {
+            try {
+                // 加载 Agent 数量
+                const agentsResp = await fetch('/api/agents');
+                if (agentsResp.ok) {
+                    const agents = await agentsResp.json();
+                    document.getElementById('agent-count').textContent = agents.length;
+                }
+                
+                // 加载工作流数量
+                const workflowsResp = await fetch('/api/workflows');
+                if (workflowsResp.ok) {
+                    const workflows = await workflowsResp.json();
+                    document.getElementById('workflow-count').textContent = workflows.length;
+                    
+                    // 计算总执行次数
+                    let totalExec = workflows.reduce((sum, w) => sum + (w.total_executions || 0), 0);
+                    document.getElementById('execution-count').textContent = totalExec;
+                }
+                
+                // 加载用户数量（需要管理员权限，可能失败）
+                try {
+                    const usersResp = await fetch('/api/auth/users');
+                    if (usersResp.ok) {
+                        const users = await usersResp.json();
+                        document.getElementById('user-count').textContent = users.length;
+                    }
+                } catch (e) {
+                    // 没权限就显示 N/A
+                    document.getElementById('user-count').textContent = '--';
+                }
+            } catch (error) {
+                console.log('加载统计失败', error);
+            }
+        }
+        
+        loadStats();
+    </script>
+</body>
+</html>
+
+

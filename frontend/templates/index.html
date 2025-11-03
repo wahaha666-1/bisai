@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智链编排平台 - 工作台</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* 弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .close:hover {
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            min-height: 100px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .btn-create {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+        }
+        
+        .btn-create:hover {
+            background: #5568d3;
+        }
+        
+        .action-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        
+        .btn-execute {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .btn-add {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .btn-add:hover {
+            background: #5568d3;
+        }
+        
+        .success-msg, .error-msg {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .success-msg {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error-msg {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 页面头部 -->
+        <header>
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>🤖 智链编排平台</h1>
+                    <div class="subtitle">AI Agent 工作流编排 - 工作台</div>
+                </div>
+                <div class="header-right">
+                    <a href="/chat" class="btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 15px;">💬 DeepSeek 对话</a>
+                    <a href="/tools" class="btn" style="background: #ff9800; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 15px;">🛠️ 工具管理</a>
+                    <a href="/dashboard" class="btn" style="background: #28a745; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 15px;">📊 数据看板</a>
+                    {% if role == 'admin' %}
+                    <a href="/admin" class="btn" style="background: #ff6b6b; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 15px;">🔧 管理后台</a>
+                    {% endif %}
+                    <span class="user-info">👤 {{ username }}</span>
+                    <a href="/logout" class="logout-btn">退出登录</a>
+                </div>
+            </div>
+        </header>
+        
+        <!-- 统计卡片 -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="agent-count">0</div>
+                <div class="stat-label">已注册 Agent</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="workflow-count">0</div>
+                <div class="stat-label">工作流</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="execution-count">0</div>
+                <div class="stat-label">总执行次数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="success-rate">0%</div>
+                <div class="stat-label">成功率</div>
+            </div>
+        </div>
+        
+        <!-- Agent 列表 -->
+        <div class="section">
+            <div class="section-header">
+                <h2>📦 Agent 库</h2>
+                <button class="btn-add" onclick="openCreateAgentModal()">➕ 创建 Agent</button>
+            </div>
+            <div class="agent-list" id="agent-list">
+                <p style="text-align: center; color: #999; padding: 40px;">⏳ 加载中...</p>
+            </div>
+        </div>
+        
+        <!-- 工作流列表 -->
+        <div class="section">
+            <div class="section-header">
+                <h2>🔄 工作流</h2>
+                <button class="btn-add" onclick="openCreateWorkflowModal()">➕ 创建工作流</button>
+            </div>
+            <div class="workflow-list" id="workflow-list">
+                <p style="text-align: center; color: #999; padding: 40px;">⏳ 加载中...</p>
+            </div>
+        </div>
+        
+        <!-- 日志列表 -->
+        <div class="section">
+            <h2>📝 最近日志</h2>
+            <div id="log-list">
+                <p style="text-align: center; color: #999; padding: 40px;">⏳ 加载中...</p>
+            </div>
+        </div>
+        
+        <!-- 页脚 -->
+        <footer>
+            <p>智链编排平台 - 让 AI Agent 编排像搭积木一样简单</p>
+        </footer>
+    </div>
+    
+    <!-- 创建 Agent 弹窗 -->
+    <div id="createAgentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>➕ 创建新 Agent</h2>
+                <span class="close" onclick="closeCreateAgentModal()">&times;</span>
+            </div>
+            
+            <div id="agent-msg-success" class="success-msg"></div>
+            <div id="agent-msg-error" class="error-msg"></div>
+            
+            <form id="createAgentForm" onsubmit="createAgent(event)">
+                <div class="form-group">
+                    <label>Agent 名称 *</label>
+                    <input type="text" id="agent-name" required placeholder="例如：文本处理器">
+                </div>
+                
+                <div class="form-group">
+                    <label>Agent 类型 *</label>
+                    <select id="agent-type" required>
+                        <option value="processor">文本处理 (processor)</option>
+                        <option value="analyzer">数据分析 (analyzer)</option>
+                        <option value="generator">内容生成 (generator)</option>
+                        <option value="crawler">网页爬虫 (crawler)</option>
+                        <option value="other">其他 (other)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>描述</label>
+                    <textarea id="agent-description" placeholder="描述这个 Agent 的功能..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>函数代码 *</label>
+                    <textarea id="agent-code" required placeholder="def process_text(text: str) -> str:
+    return text.upper()"></textarea>
+                </div>
+                
+                <button type="submit" class="btn-create">✅ 创建 Agent</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 创建工作流弹窗 -->
+    <div id="createWorkflowModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>➕ 创建新工作流</h2>
+                <span class="close" onclick="closeCreateWorkflowModal()">&times;</span>
+            </div>
+            
+            <div id="workflow-msg-success" class="success-msg"></div>
+            <div id="workflow-msg-error" class="error-msg"></div>
+            
+            <form id="createWorkflowForm" onsubmit="createWorkflow(event)">
+                <div class="form-group">
+                    <label>工作流名称 *</label>
+                    <input type="text" id="workflow-name" required placeholder="例如：数据处理流程">
+                </div>
+                
+                <div class="form-group">
+                    <label>描述</label>
+                    <textarea id="workflow-description" placeholder="描述这个工作流的用途..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>分类</label>
+                    <select id="workflow-category">
+                        <option value="数据处理">数据处理</option>
+                        <option value="内容生成">内容生成</option>
+                        <option value="自动化">自动化</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>工作流定义（JSON格式）*</label>
+                    <textarea id="workflow-definition" required placeholder='{"agents": ["agent1", "agent2"], "sequence": [{"agent": "agent1", "next": "agent2"}]}'></textarea>
+                    <small style="color: #666;">提示：定义 Agent 执行顺序和数据流</small>
+                </div>
+                
+                <button type="submit" class="btn-create">✅ 创建工作流</button>
+            </form>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=20251102125338"></script>
+    <script>
+        // ============================================================================
+        // 内联执行函数 - 绕过缓存问题（覆盖外部JS中的旧函数）
+        // ============================================================================
+        
+        // 显示工作流执行结果的美观模态框
+        function showExecutionResult(result) {
+            // 移除旧的模态框（如果存在）
+            const oldModal = document.getElementById('execution-result-modal');
+            if (oldModal) oldModal.remove();
+            
+            const isSuccess = result.success;
+            const statusIcon = isSuccess ? '✅' : '❌';
+            const statusColor = isSuccess ? '#10b981' : '#ef4444';
+            const statusText = isSuccess ? '工作流执行成功！' : '工作流执行失败！';
+            
+            // 创建模态框
+            const modal = document.createElement('div');
+            modal.id = 'execution-result-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.6);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s ease;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 16px;
+                    padding: 32px;
+                    max-width: 700px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                    animation: slideUp 0.3s ease;
+                ">
+                    <div style="text-align: center; margin-bottom: 24px;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">${statusIcon}</div>
+                        <h2 style="margin: 0; color: ${statusColor}; font-size: 24px;">${statusText}</h2>
+                    </div>
+                    
+                    <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                        <div style="display: grid; grid-template-columns: auto 1fr; gap: 12px 16px; font-size: 14px;">
+                            <div style="font-weight: 600; color: #6b7280;">工作流：</div>
+                            <div style="color: #111827;">${result.workflow_name || 'N/A'}</div>
+                            
+                            <div style="font-weight: 600; color: #6b7280;">执行时间：</div>
+                            <div style="color: #111827;">${result.execution_time ? result.execution_time.toFixed(3) : '0.000'} 秒</div>
+                            
+                            <div style="font-weight: 600; color: #6b7280;">执行ID：</div>
+                            <div style="color: #111827;">#${result.execution_id || 'N/A'}</div>
+                        </div>
+                    </div>
+                    
+                    ${result.error ? `
+                        <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 12px; border-radius: 4px; margin-bottom: 16px;">
+                            <div style="font-weight: 600; color: #dc2626; margin-bottom: 8px;">❌ 错误信息：</div>
+                            <div style="color: #991b1b; font-family: monospace; font-size: 13px; white-space: pre-wrap;">${result.error}</div>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 12px;">📋 执行结果：</div>
+                        <pre style="
+                            background: #1f2937;
+                            color: #10b981;
+                            padding: 16px;
+                            border-radius: 8px;
+                            overflow-x: auto;
+                            margin: 0;
+                            font-size: 13px;
+                            line-height: 1.5;
+                            max-height: 300px;
+                        ">${JSON.stringify(result.output, null, 2)}</pre>
+                    </div>
+                    
+                    <button onclick="document.getElementById('execution-result-modal').remove(); if (typeof loadData === 'function') loadData();" style="
+                        width: 100%;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        border: none;
+                        padding: 14px;
+                        border-radius: 8px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: transform 0.2s, box-shadow 0.2s;
+                    " onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 8px 20px rgba(102, 126, 234, 0.4)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                        确定
+                    </button>
+                </div>
+            `;
+            
+            // 添加动画CSS
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes slideUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(30px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+            `;
+            if (!document.getElementById('modal-animations')) {
+                style.id = 'modal-animations';
+                document.head.appendChild(style);
+            }
+            
+            document.body.appendChild(modal);
+            
+            // 点击背景关闭
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                    if (typeof loadData === 'function') loadData();
+                }
+            });
+        }
+        
+        // 执行工作流（内联版本 - 会覆盖 main.js 中的旧版本）
+        window.executeWorkflow = async function(workflowId, workflowName) {
+            try {
+                // 弹出输入参数对话框
+                const inputParams = prompt(
+                    `执行工作流「${workflowName}」\n\n请输入参数（JSON格式）：\n例如：{"text": "Hello World", "mode": "upper"}`,
+                    '{"text": "Hello World", "mode": "upper"}'
+                );
+                
+                if (inputParams === null) return; // 用户取消
+                
+                // 解析输入参数
+                let params = {};
+                try {
+                    params = JSON.parse(inputParams);
+                } catch (e) {
+                    alert(`❌ JSON格式错误：${e.message}\n\n请使用正确的JSON格式，例如：\n{"text": "Hello", "mode": "upper"}`);
+                    return;
+                }
+                
+                console.log(`[内联版本] 执行工作流 ID: ${workflowId}, 名称: ${workflowName}, 参数:`, params);
+                
+                const response = await fetch(`/api/workflows/${workflowId}/execute`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(params)
+                });
+                
+                const result = await response.json();
+                console.log('[内联版本] 执行结果:', result);
+                
+                // 使用美观的模态框显示结果
+                showExecutionResult({
+                    success: result.success,
+                    workflow_name: workflowName,
+                    execution_time: result.execution_time,
+                    execution_id: result.execution_id,
+                    output: result.output,
+                    error: result.error
+                });
+                
+            } catch (error) {
+                showExecutionResult({
+                    success: false,
+                    workflow_name: workflowName,
+                    error: error.message,
+                    output: null
+                });
+                console.error('[内联版本] 执行失败:', error);
+            }
+        }
+        
+        // 删除 Agent
+        async function deleteAgent(agentName) {
+            try {
+                const confirmed = confirm(`确定要删除 Agent「${agentName}」吗？\n\n此操作不可撤销！`);
+                if (!confirmed) return;
+                
+                const response = await fetch(`/api/agents/${encodeURIComponent(agentName)}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(`✅ Agent 删除成功！`);
+                    if (typeof loadData === 'function') {
+                        loadData();
+                    }
+                } else {
+                    alert(`❌ 删除失败！\n\n${result.error || '未知错误'}`);
+                }
+            } catch (error) {
+                alert(`❌ 删除 Agent 时发生错误！\n\n${error.message}`);
+                console.error('删除 Agent 失败:', error);
+            }
+        }
+        
+        // 删除工作流
+        async function deleteWorkflow(workflowId, workflowName) {
+            try {
+                const confirmed = confirm(`确定要删除工作流「${workflowName}」吗？\n\n此操作不可撤销！`);
+                if (!confirmed) return;
+                
+                const response = await fetch(`/api/workflows/${workflowId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(`✅ 工作流删除成功！`);
+                    if (typeof loadData === 'function') {
+                        loadData();
+                    }
+                } else {
+                    alert(`❌ 删除失败！\n\n${result.error || '未知错误'}`);
+                }
+            } catch (error) {
+                alert(`❌ 删除工作流时发生错误！\n\n${error.message}`);
+                console.error('删除工作流失败:', error);
+            }
+        }
+        
+        console.log('[内联脚本] executeWorkflow, deleteAgent, deleteWorkflow 函数已加载');
+        
+        // ============================================================================
+        // 模态框函数
+        // ============================================================================
+        
+        // 打开/关闭 Agent 创建弹窗
+        function openCreateAgentModal() {
+            document.getElementById('createAgentModal').style.display = 'block';
+        }
+        
+        function closeCreateAgentModal() {
+            document.getElementById('createAgentModal').style.display = 'none';
+            document.getElementById('createAgentForm').reset();
+            document.getElementById('agent-msg-success').style.display = 'none';
+            document.getElementById('agent-msg-error').style.display = 'none';
+        }
+        
+        // 打开/关闭工作流创建弹窗
+        function openCreateWorkflowModal() {
+            document.getElementById('createWorkflowModal').style.display = 'block';
+        }
+        
+        function closeCreateWorkflowModal() {
+            document.getElementById('createWorkflowModal').style.display = 'none';
+            document.getElementById('createWorkflowForm').reset();
+            document.getElementById('workflow-msg-success').style.display = 'none';
+            document.getElementById('workflow-msg-error').style.display = 'none';
+        }
+        
+        // 创建 Agent
+        async function createAgent(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('agent-name').value;
+            const type = document.getElementById('agent-type').value;
+            const description = document.getElementById('agent-description').value;
+            const code = document.getElementById('agent-code').value;
+            
+            try {
+                const response = await fetch('/api/agents', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        agent_type: type,
+                        description: description,
+                        code: code
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('agent-msg-success').textContent = '✅ Agent 创建成功！';
+                    document.getElementById('agent-msg-success').style.display = 'block';
+                    document.getElementById('agent-msg-error').style.display = 'none';
+                    
+                    setTimeout(() => {
+                        closeCreateAgentModal();
+                        loadAgents(); // 重新加载列表
+                    }, 1500);
+                } else {
+                    document.getElementById('agent-msg-error').textContent = '❌ ' + (data.error || '创建失败');
+                    document.getElementById('agent-msg-error').style.display = 'block';
+                    document.getElementById('agent-msg-success').style.display = 'none';
+                }
+            } catch (error) {
+                document.getElementById('agent-msg-error').textContent = '❌ 网络错误：' + error.message;
+                document.getElementById('agent-msg-error').style.display = 'block';
+            }
+        }
+        
+        // 创建工作流
+        async function createWorkflow(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('workflow-name').value;
+            const description = document.getElementById('workflow-description').value;
+            const category = document.getElementById('workflow-category').value;
+            const definitionStr = document.getElementById('workflow-definition').value;
+            
+            try {
+                // 验证 JSON 格式
+                const definition = JSON.parse(definitionStr);
+                
+                const response = await fetch('/api/workflows', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        description: description,
+                        category: category,
+                        workflow_definition: definition
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('workflow-msg-success').textContent = '✅ 工作流创建成功！';
+                    document.getElementById('workflow-msg-success').style.display = 'block';
+                    document.getElementById('workflow-msg-error').style.display = 'none';
+                    
+                    setTimeout(() => {
+                        closeCreateWorkflowModal();
+                        loadWorkflows(); // 重新加载列表
+                    }, 1500);
+                } else {
+                    document.getElementById('workflow-msg-error').textContent = '❌ ' + (data.error || '创建失败');
+                    document.getElementById('workflow-msg-error').style.display = 'block';
+                    document.getElementById('workflow-msg-success').style.display = 'none';
+                }
+            } catch (error) {
+                document.getElementById('workflow-msg-error').textContent = '❌ JSON 格式错误：' + error.message;
+                document.getElementById('workflow-msg-error').style.display = 'block';
+            }
+        }
+        
+        // 执行工作流
+        async function executeWorkflow(workflowId, workflowName) {
+            if (!confirm(`确定要执行工作流「${workflowName}」吗？`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/workflows/${workflowId}/execute`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    alert('✅ 工作流执行成功！\n\n结果：' + JSON.stringify(data.result, null, 2));
+                    loadStats();
+                    loadLogs();
+                } else {
+                    alert('❌ 工作流执行失败：' + (data.error || '未知错误'));
+                }
+            } catch (error) {
+                alert('❌ 网络错误：' + error.message);
+            }
+        }
+        
+        // 点击弹窗外部关闭
+        window.onclick = function(event) {
+            const agentModal = document.getElementById('createAgentModal');
+            const workflowModal = document.getElementById('createWorkflowModal');
+            
+            if (event.target == agentModal) {
+                closeCreateAgentModal();
+            }
+            if (event.target == workflowModal) {
+                closeCreateWorkflowModal();
+            }
+        }
+    </script>
+    
+    <!-- 批量删除功能 -->
+    <script src="{{ url_for('static', filename='js/batch-operations.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek 网络诊断工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+        }
+        
+        .test-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .test-result {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-size: 16px;
+        }
+        
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .back-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+        
+        ul {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+        
+        li {
+            margin: 5px 0;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 DeepSeek 网络诊断工具</h1>
+        
+        <div id="results"></div>
+        
+        <button class="btn" onclick="runTests()">🚀 开始诊断</button>
+        
+        <div class="back-link">
+            <a href="/workspace">← 返回工作台</a>
+        </div>
+    </div>
+    
+    <script>
+        async function runTests() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">🔄 正在诊断，请稍候...</div>';
+            
+            let html = '';
+            
+            // 测试1：浏览器网络连接
+            html += '<div class="test-section">';
+            html += '<div class="test-title">1️⃣ 测试：浏览器网络连接</div>';
+            
+            if (navigator.onLine) {
+                html += '<div class="test-result success">✅ 浏览器显示已连接到网络</div>';
+            } else {
+                html += '<div class="test-result error">❌ 浏览器显示未连接到网络<br>请检查您的网络连接</div>';
+            }
+            html += '</div>';
+            
+            // 测试2：DeepSeek API 连通性
+            html += '<div class="test-section">';
+            html += '<div class="test-title">2️⃣ 测试：DeepSeek API 连通性</div>';
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch('https://api.deepseek.com', {
+                    method: 'GET',
+                    mode: 'no-cors',  // 避免CORS问题
+                    cache: 'no-cache'
+                });
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                
+                html += `<div class="test-result success">✅ 成功连接到 DeepSeek API<br>响应时间: ${duration}ms</div>`;
+            } catch (error) {
+                html += '<div class="test-result error">❌ 无法连接到 DeepSeek API<br><br>';
+                html += '<strong>可能的原因：</strong><ul>';
+                html += '<li>网络防火墙阻止了连接</li>';
+                html += '<li>DNS 解析失败</li>';
+                html += '<li>需要配置代理</li>';
+                html += '<li>地区网络限制</li>';
+                html += '</ul>';
+                html += '<strong>建议：</strong><ul>';
+                html += '<li>检查防火墙设置</li>';
+                html += '<li>尝试更换网络（如手机热点）</li>';
+                html += '<li>联系网络管理员</li>';
+                html += '</ul></div>';
+            }
+            html += '</div>';
+            
+            // 测试3：配置状态
+            html += '<div class="test-section">';
+            html += '<div class="test-title">3️⃣ 检查：API Key 配置状态</div>';
+            
+            try {
+                const configResponse = await fetch('/api/chat/config');
+                const configData = await configResponse.json();
+                
+                if (configData.configured) {
+                    html += '<div class="test-result success">✅ API Key 已配置<br>';
+                    if (configData.key_prefix) {
+                        html += `当前配置: <code>${configData.key_prefix}</code>`;
+                    }
+                    html += '</div>';
+                } else {
+                    html += '<div class="test-result warning">⚠️ API Key 未配置<br><br>';
+                    html += '<strong>操作步骤：</strong><ol>';
+                    html += '<li>访问 <a href="https://platform.deepseek.com" target="_blank">DeepSeek 官网</a></li>';
+                    html += '<li>注册/登录账号</li>';
+                    html += '<li>创建 API Key</li>';
+                    html += '<li>返回对话页面，点击「配置」按钮</li>';
+                    html += '<li>粘贴 API Key 并保存</li>';
+                    html += '</ol></div>';
+                }
+            } catch (error) {
+                html += '<div class="test-result error">❌ 无法获取配置状态<br>错误: ' + error.message + '</div>';
+            }
+            html += '</div>';
+            
+            // 测试4：系统信息
+            html += '<div class="test-section">';
+            html += '<div class="test-title">4️⃣ 系统信息</div>';
+            html += '<div class="test-result info">';
+            html += `<strong>浏览器：</strong> ${navigator.userAgent}<br>`;
+            html += `<strong>语言：</strong> ${navigator.language}<br>`;
+            html += `<strong>平台：</strong> ${navigator.platform}<br>`;
+            html += `<strong>在线状态：</strong> ${navigator.onLine ? '在线' : '离线'}<br>`;
+            html += `<strong>时间：</strong> ${new Date().toLocaleString('zh-CN')}`;
+            html += '</div></div>';
+            
+            // 总结建议
+            html += '<div class="test-section">';
+            html += '<div class="test-title">💡 诊断总结与建议</div>';
+            html += '<div class="test-result info">';
+            html += '<strong>如果您遇到超时错误，请尝试：</strong><ul>';
+            html += '<li>🔄 等待几分钟后重试</li>';
+            html += '<li>📱 切换到手机热点</li>';
+            html += '<li>🔌 更换 WiFi 网络</li>';
+            html += '<li>🚫 关闭 VPN 或代理软件</li>';
+            html += '<li>🛡️ 暂时关闭防火墙</li>';
+            html += '<li>🌐 使用浏览器的隐私/无痕模式</li>';
+            html += '</ul>';
+            html += '<strong>如果问题持续存在：</strong><ul>';
+            html += '<li>可能是 DeepSeek 服务器维护或繁忙</li>';
+            html += '<li>可能是地区网络限制</li>';
+            html += '<li>建议稍后再试或联系技术支持</li>';
+            html += '</ul></div></div>';
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // 页面加载时自动运行诊断
+        window.onload = function() {
+            runTests();
+        };
+    </script>
+</body>
+</html>
+

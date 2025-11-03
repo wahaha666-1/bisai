@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>测试工作流执行</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 测试工作流执行</h1>
+    
+    <p>点击下面的按钮测试工作流执行：</p>
+    
+    <button onclick="testExecute(1)">测试工作流 #1</button>
+    <button onclick="testExecute(2)">测试工作流 #2</button>
+    <button onclick="testExecute(3)">测试工作流 #3</button>
+    
+    <div id="result"></div>
+    
+    <script>
+        async function testExecute(workflowId) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = '正在执行...';
+            resultDiv.className = '';
+            
+            try {
+                const response = await fetch(`/api/workflows/${workflowId}/execute`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                const result = await response.json();
+                
+                console.log('完整返回数据：', result);
+                
+                if (result.success) {
+                    resultDiv.className = 'success';
+                    resultDiv.textContent = `✅ 执行成功！\n\n` +
+                        `执行时间: ${result.execution_time}秒\n\n` +
+                        `完整返回数据:\n${JSON.stringify(result, null, 2)}`;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.textContent = `❌ 执行失败！\n\n错误: ${result.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = `❌ 请求失败！\n\n${error.message}`;
+                console.error('错误：', error);
+            }
+        }
+    </script>
+</body>
+</html>
+
+

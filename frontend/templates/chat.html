@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 智能助手 - AgentForge</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        /* 侧边栏 */
+        .sidebar {
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .sidebar-header h1 {
+            font-size: 20px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .new-chat-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .chat-sessions {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .chat-session-item {
+            padding: 12px;
+            margin-bottom: 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-session-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .chat-session-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .delete-session {
+            opacity: 0;
+            color: #dc3545;
+            cursor: pointer;
+        }
+        
+        .chat-session-item:hover .delete-session {
+            opacity: 1;
+        }
+        
+        /* 聊天主区域 */
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+        
+        .chat-header {
+            padding: 20px 30px;
+            background: rgba(255, 255, 255, 0.95);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-header h2 {
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            max-width: 800px;
+            margin: 0 auto 20px;
+            display: flex;
+            gap: 15px;
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        
+        .user-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .assistant-avatar {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        
+        .message-content {
+            flex: 1;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            line-height: 1.6;
+        }
+        
+        .message-content pre {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .message-content code {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        .input-container {
+            padding: 20px 30px;
+            background: white;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .input-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .input-box {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 24px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+        }
+        
+        .input-box:focus {
+            border-color: #667eea;
+        }
+        
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            border: none;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .welcome-screen {
+            max-width: 600px;
+            margin: 100px auto;
+            text-align: center;
+        }
+        
+        .welcome-screen h1 {
+            font-size: 36px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+        
+        .welcome-screen p {
+            color: #666;
+            font-size: 16px;
+            line-height: 1.8;
+        }
+        
+        .suggestions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 40px;
+        }
+        
+        .suggestion-card {
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .suggestion-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        }
+        
+        .suggestion-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .suggestion-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .suggestion-text {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .loading {
+            display: flex;
+            gap: 5px;
+            padding: 10px;
+        }
+        
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+        
+        .loading-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+        
+        .loading-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+        
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
+        }
+        
+        .config-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>🤖 AI 智能助手</h1>
+                <button class="new-chat-btn" onclick="createNewSession()">
+                    <i class="fas fa-plus"></i> 新建对话
+                </button>
+            </div>
+            <div class="chat-sessions" id="chatSessions">
+                <!-- 对话列表将在这里动态加载 -->
+            </div>
+        </div>
+        
+        <!-- 主聊天区域 -->
+        <div class="chat-main">
+            <div class="chat-header">
+                <h2 id="chatTitle">DeepSeek AI 助手</h2>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="showConfigModal()">
+                        <i class="fas fa-cog"></i> 配置
+                    </button>
+                    <button class="btn btn-secondary" onclick="window.location.href='/workspace'">
+                        <i class="fas fa-arrow-left"></i> 返回工作台
+                    </button>
+                </div>
+            </div>
+            
+            <div class="messages-container" id="messagesContainer">
+                <div class="welcome-screen" id="welcomeScreen">
+                    <h1>👋 您好！我是 AgentFlow AI 助手</h1>
+                    <p>我可以帮您：</p>
+                    <div class="suggestions">
+                               <div class="suggestion-card" onclick="sendSuggestion('帮我生成一个JSON数据处理的Agent代码')">
+                                   <div class="suggestion-icon">🤖</div>
+                                   <div class="suggestion-title">生成 Agent 代码</div>
+                                   <div class="suggestion-text">智能生成Python Agent函数</div>
+                               </div>
+                               <div class="suggestion-card" onclick="sendSuggestion('如何设计一个数据处理工作流？需要读取、处理、输出三个步骤')">
+                                   <div class="suggestion-icon">🔄</div>
+                                   <div class="suggestion-title">工作流设计</div>
+                                   <div class="suggestion-text">多Agent串联执行</div>
+                               </div>
+                               <div class="suggestion-card" onclick="sendSuggestion('介绍一下AgentFlow平台的核心功能')">
+                                   <div class="suggestion-icon">💡</div>
+                                   <div class="suggestion-title">平台功能</div>
+                                   <div class="suggestion-text">了解Agent编排系统</div>
+                               </div>
+                               <div class="suggestion-card" onclick="sendSuggestion('推荐一些常用的Agent类型和使用场景')">
+                                   <div class="suggestion-icon">📚</div>
+                                   <div class="suggestion-title">Agent类型</div>
+                                   <div class="suggestion-text">processor/analyzer/converter</div>
+                               </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <input 
+                        type="text" 
+                        class="input-box" 
+                        id="messageInput" 
+                        placeholder="输入您的问题...（按 Enter 发送）"
+                        onkeypress="handleKeyPress(event)"
+                    >
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 配置模态框 -->
+    <div class="config-modal" id="configModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3 class="modal-title">配置 DeepSeek API Key</h3>
+            <div class="form-group">
+                <label>API Key:</label>
+                <input type="password" id="apiKeyInput" placeholder="sk-...">
+                <small style="color: #666; display: block; margin-top: 5px;">
+                    获取 API Key: <a href="https://platform.deepseek.com" target="_blank" style="color: #667eea;">https://platform.deepseek.com</a>
+                </small>
+                <div id="currentKeyDisplay" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 5px; display: none;">
+                    <strong>当前配置:</strong> <span id="currentKeyText"></span>
+                </div>
+            </div>
+            
+            <!-- 网络诊断提示 -->
+            <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px; font-size: 13px;">
+                <strong>⚠️ 网络问题排查</strong>
+                <div style="margin-top: 8px; line-height: 1.6;">
+                    <div style="margin-bottom: 5px;">
+                        <strong>如遇到超时错误：</strong>
+                    </div>
+                    <ul style="margin: 5px 0; padding-left: 20px;">
+                        <li>检查网络连接是否正常</li>
+                        <li>确认能否访问 api.deepseek.com</li>
+                        <li>关闭VPN或代理软件试试</li>
+                        <li>等待几分钟后重试</li>
+                    </ul>
+                    <div style="margin-top: 8px; padding: 8px; background: white; border-radius: 4px;">
+                        <strong>💡 快速诊断：</strong><br>
+                        <a href="/network-test" target="_blank" style="color: #667eea; font-weight: bold;">
+                            🔍 打开网络诊断工具 →
+                        </a>
+                        <div style="margin-top: 5px; font-size: 12px; color: #666;">
+                            自动检测网络连接、API配置状态等
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeConfigModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveApiKey()">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentSessionId = null;
+        let isLoading = false;
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            checkConfig();
+            loadChatSessions();
+        });
+        
+        // 检查配置
+        async function checkConfig() {
+            const response = await fetch('/api/chat/config');
+            const data = await response.json();
+            
+            if (!data.configured) {
+                showConfigModal();
+            }
+        }
+        
+        // 加载对话列表
+        async function loadChatSessions() {
+            const response = await fetch('/api/chat/sessions');
+            const sessions = await response.json();
+            
+            const container = document.getElementById('chatSessions');
+            container.innerHTML = sessions.map(s => `
+                <div class="chat-session-item ${s.id === currentSessionId ? 'active' : ''}" 
+                     onclick="loadSession(${s.id}, '${s.title}')">
+                    <span>${s.title}</span>
+                    <i class="fas fa-trash delete-session" onclick="event.stopPropagation(); deleteSession(${s.id})"></i>
+                </div>
+            `).join('');
+        }
+        
+        // 创建新对话
+        async function createNewSession() {
+            try {
+                const response = await fetch('/api/chat/sessions', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({title: '新对话'})
+                });
+                
+                const data = await response.json();
+                currentSessionId = data.session_id;
+                
+                console.log('[创建会话] 会话ID:', currentSessionId);
+                
+                // 清空消息区域
+                const container = document.getElementById('messagesContainer');
+                container.innerHTML = `
+                    <div class="welcome-screen">
+                        <h1>👋 您好！我是 AgentFlow AI 助手</h1>
+                        <p>我可以帮您：</p>
+                        <div class="suggestions">
+                               <div class="suggestion-card" onclick="sendSuggestion('帮我生成一个JSON数据处理的Agent代码')">
+                                   <div class="suggestion-icon">🤖</div>
+                                   <div class="suggestion-title">生成 Agent 代码</div>
+                                   <div class="suggestion-text">智能生成Python Agent函数</div>
+                               </div>
+                               <div class="suggestion-card" onclick="sendSuggestion('如何设计一个数据处理工作流？需要读取、处理、输出三个步骤')">
+                                   <div class="suggestion-icon">🔄</div>
+                                   <div class="suggestion-title">工作流设计</div>
+                                   <div class="suggestion-text">多Agent串联执行</div>
+                               </div>
+                               <div class="suggestion-card" onclick="sendSuggestion('介绍一下AgentFlow平台的核心功能')">
+                                   <div class="suggestion-icon">💡</div>
+                                   <div class="suggestion-title">平台功能</div>
+                                   <div class="suggestion-text">了解Agent编排系统</div>
+                               </div>
+                               <div class="suggestion-card" onclick="sendSuggestion('推荐一些常用的Agent类型和使用场景')">
+                                   <div class="suggestion-icon">📚</div>
+                                   <div class="suggestion-title">Agent类型</div>
+                                   <div class="suggestion-text">processor/analyzer/converter</div>
+                               </div>
+                        </div>
+                    </div>
+                `;
+                
+                loadChatSessions();
+            } catch (error) {
+                console.error('[创建会话失败]', error);
+                alert('创建会话失败: ' + error.message);
+            }
+        }
+        
+        // 加载对话
+        async function loadSession(sessionId, title) {
+            try {
+                currentSessionId = sessionId;
+                document.getElementById('chatTitle').textContent = title;
+                
+                console.log('[加载会话] 会话ID:', sessionId);
+                
+                const response = await fetch(`/api/chat/sessions/${sessionId}/messages`);
+                const messages = await response.json();
+                
+                const container = document.getElementById('messagesContainer');
+                
+                if (messages.length === 0) {
+                    // 如果没有消息，显示欢迎屏幕
+                    container.innerHTML = `
+                        <div class="welcome-screen">
+                            <h1>👋 您好！我是 AgentFlow AI 助手</h1>
+                            <p>我可以帮您：</p>
+                            <div class="suggestions">
+                               <div class="suggestion-card" onclick="sendSuggestion('帮我生成一个JSON数据处理的Agent代码')">
+                                   <div class="suggestion-icon">🤖</div>
+                                   <div class="suggestion-title">生成 Agent 代码</div>
+                                   <div class="suggestion-text">智能生成Python Agent函数</div>
+                               </div>
+                               <div class="suggestion-card" onclick="sendSuggestion('如何设计一个数据处理工作流？需要读取、处理、输出三个步骤')">
+                                   <div class="suggestion-icon">🔄</div>
+                                   <div class="suggestion-title">工作流设计</div>
+                                   <div class="suggestion-text">多Agent串联执行</div>
+                               </div>
+                               <div class="suggestion-card" onclick="sendSuggestion('介绍一下AgentFlow平台的核心功能')">
+                                   <div class="suggestion-icon">💡</div>
+                                   <div class="suggestion-title">平台功能</div>
+                                   <div class="suggestion-text">了解Agent编排系统</div>
+                               </div>
+                               <div class="suggestion-card" onclick="sendSuggestion('推荐一些常用的Agent类型和使用场景')">
+                                   <div class="suggestion-icon">📚</div>
+                                   <div class="suggestion-title">Agent类型</div>
+                                   <div class="suggestion-text">processor/analyzer/converter</div>
+                               </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // 显示消息历史
+                    container.innerHTML = messages.map(msg => `
+                        <div class="message">
+                            <div class="message-avatar ${msg.role}-avatar">
+                                ${msg.role === 'user' ? '👤' : '🤖'}
+                            </div>
+                            <div class="message-content">
+                                ${formatMessage(msg.content)}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                container.scrollTop = container.scrollHeight;
+                loadChatSessions();
+            } catch (error) {
+                console.error('[加载会话失败]', error);
+                alert('加载会话失败: ' + error.message);
+            }
+        }
+        
+        // 发送消息
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            console.log('[发送消息] 消息内容:', message);
+            console.log('[发送消息] 当前会话ID:', currentSessionId);
+            console.log('[发送消息] isLoading:', isLoading);
+            
+            if (!message || isLoading) {
+                console.log('[发送消息] 消息为空或正在加载，取消发送');
+                return;
+            }
+            
+            // 如果没有会话ID，先创建会话
+            if (!currentSessionId) {
+                console.log('[发送消息] 没有会话ID，创建新会话');
+                await createNewSession();
+            }
+            
+            console.log('[发送消息] 开始发送到会话:', currentSessionId);
+            
+            input.value = '';
+            isLoading = true;
+            document.getElementById('sendBtn').disabled = true;
+            
+            // 清除欢迎屏幕
+            const welcomeScreen = document.querySelector('.welcome-screen');
+            if (welcomeScreen) {
+                welcomeScreen.remove();
+            }
+            
+            // 显示用户消息
+            addMessage('user', message);
+            
+            // 创建一个空的assistant消息容器，用于流式更新
+            const container = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.innerHTML = `
+                <div class="message-avatar assistant-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>
+                </div>
+            `;
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+            
+            const contentDiv = messageDiv.querySelector('.message-content');
+            let fullContent = '';
+            
+            try {
+                console.log('[发送消息] 建立流式连接...');
+                const apiUrl = `/api/chat/sessions/${currentSessionId}/messages`;
+                console.log('[发送消息] 请求URL:', apiUrl);
+                console.log('[发送消息] 请求Body:', {message: message});
+                
+                // 使用 fetch 读取流式响应
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: message})
+                });
+                
+                console.log('[发送消息] 响应状态:', response.status, response.statusText);
+                console.log('[发送消息] 响应Headers:', Object.fromEntries(response.headers.entries()));
+                
+                if (!response.ok) {
+                    throw new Error('请求失败: ' + response.status);
+                }
+                
+                // 移除加载动画
+                contentDiv.innerHTML = '';
+                
+                // 读取流式数据
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const {done, value} = await reader.read();
+                    
+                    if (done) {
+                        console.log('[流式输出] 流结束');
+                        break;
+                    }
+                    
+                    // 解码数据
+                    const chunk = decoder.decode(value, {stream: true});
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                
+                                if (data.done) {
+                                    console.log('[流式输出] 接收完成');
+                                    break;
+                                }
+                                
+                                // 处理工具调用通知
+                                if (data.success && data.tool_call) {
+                                    const toolName = data.tool_call.name;
+                                    const toolArgs = JSON.stringify(data.tool_call.arguments);
+                                    console.log('[工具调用] 收到工具调用通知:', toolName);
+                                    
+                                    const toolNotice = `🔧 正在调用工具: **${toolName}**\n参数: \`${toolArgs}\`\n\n`;
+                                    fullContent += toolNotice;
+                                    contentDiv.innerHTML = formatMessage(fullContent);
+                                    container.scrollTop = container.scrollHeight;
+                                }
+                                // 处理正常内容
+                                else if (data.success && data.content) {
+                                    fullContent += data.content;
+                                    contentDiv.innerHTML = formatMessage(fullContent);
+                                    container.scrollTop = container.scrollHeight;
+                                }
+                                // 处理错误
+                                else if (!data.success && data.error) {
+                                    let errorMsg = '❌ ' + data.error;
+                                    if (data.error_type === 'timeout') {
+                                        errorMsg += '\n\n💡 提示：您可以重新发送消息进行重试';
+                                    }
+                                    if (data.error_type === 'auth_error') {
+                                        errorMsg += '\n\n请点击右上角「⚙️ 配置」重新设置 API Key';
+                                    }
+                                    contentDiv.innerHTML = formatMessage(errorMsg);
+                                }
+                                // 调试：记录未处理的数据
+                                else {
+                                    console.warn('[流式输出] 未处理的数据:', data);
+                                }
+                            } catch (e) {
+                                console.error('[流式输出] JSON解析错误:', e);
+                            }
+                        }
+                    }
+                }
+                
+                console.log('[发送消息] ✅ 流式接收完成');
+                console.log('[发送消息] 完整内容长度:', fullContent.length);
+                
+                // 流式接收完成后，检测是否包含创建标记
+                if (fullContent.includes('```CREATE_AGENTS_AND_WORKFLOW')) {
+                    console.log('[创建检测] 发现创建标记，开始解析...');
+                    
+                    // 提取JSON配置
+                    let createData = null;
+                    let displayContent = fullContent;
+                    
+                    try {
+                        const match = fullContent.match(/```CREATE_AGENTS_AND_WORKFLOW\s*\n([\s\S]*?)```/);
+                        if (match && match[1]) {
+                            const jsonStr = match[1].trim();
+                            console.log('[创建检测] JSON字符串:', jsonStr.substring(0, 200) + '...');
+                            createData = JSON.parse(jsonStr);
+                            console.log('[创建检测] ✅ JSON解析成功');
+                            
+                            // 隐藏原始JSON，显示创建按钮
+                            displayContent = fullContent.replace(/```CREATE_AGENTS_AND_WORKFLOW[\s\S]*?```/, '');
+                        }
+                    } catch (e) {
+                        console.error('[创建检测] JSON解析失败:', e);
+                    }
+                    
+                    // 更新显示内容
+                    contentDiv.innerHTML = formatMessage(displayContent);
+                    
+                    // 添加创建按钮
+                    if (createData) {
+                        const createActionDiv = document.createElement('div');
+                        createActionDiv.className = 'create-action';
+                        createActionDiv.style.cssText = 'margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white;';
+                        createActionDiv.innerHTML = `
+                            <div style="font-weight: bold; margin-bottom: 10px;">✨ 一键创建到平台</div>
+                            <div style="font-size: 13px; margin-bottom: 10px; opacity: 0.9;">
+                                将创建 <strong>${createData.agents.length}</strong> 个Agent${createData.workflow ? ' 和 1 个工作流' : ''}
+                            </div>
+                            <button onclick='createToPlatform(${JSON.stringify(createData).replace(/'/g, "&apos;")})' 
+                                    style="background: white; color: #667eea; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: transform 0.2s;">
+                                🚀 立即创建
+                            </button>
+                        `;
+                        contentDiv.appendChild(createActionDiv);
+                        console.log('[创建检测] ✅ 创建按钮已添加');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('[发送消息] ❌ 异常:', error);
+                contentDiv.innerHTML = formatMessage('❌ 网络错误: ' + error.message);
+            }
+            
+            isLoading = false;
+            document.getElementById('sendBtn').disabled = false;
+            console.log('[发送消息] 流程结束');
+        }
+        
+        // 添加消息到界面
+        function addMessage(role, content) {
+            const container = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            
+            // 检测是否包含创建标记
+            let createData = null;
+            let displayContent = content;
+            
+            if (role === 'assistant' && content.includes('```CREATE_AGENTS_AND_WORKFLOW')) {
+                try {
+                    // 提取JSON配置
+                    const match = content.match(/```CREATE_AGENTS_AND_WORKFLOW\s*\n([\s\S]*?)```/);
+                    if (match && match[1]) {
+                        createData = JSON.parse(match[1].trim());
+                        // 移除特殊标记，只显示说明文字
+                        displayContent = content.replace(/```CREATE_AGENTS_AND_WORKFLOW[\s\S]*?```/, '');
+                    }
+                } catch (e) {
+                    console.error('解析创建配置失败:', e);
+                }
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar ${role}-avatar">
+                    ${role === 'user' ? '👤' : '🤖'}
+                </div>
+                <div class="message-content">
+                    ${formatMessage(displayContent)}
+                    ${createData ? `
+                        <div class="create-action" style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white;">
+                            <div style="font-weight: bold; margin-bottom: 10px;">✨ 一键创建到平台</div>
+                            <div style="font-size: 13px; margin-bottom: 10px; opacity: 0.9;">
+                                将创建 <strong>${createData.agents.length}</strong> 个Agent${createData.workflow ? ' 和 1 个工作流' : ''}
+                            </div>
+                            <button onclick='createToPlatform(${JSON.stringify(createData).replace(/'/g, "&apos;")})' 
+                                    style="background: white; color: #667eea; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: transform 0.2s;">
+                                🚀 立即创建
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        // 格式化消息
+        function formatMessage(content) {
+            // 处理代码块
+            content = content.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+            // 处理换行
+            content = content.replace(/\n/g, '<br>');
+            return content;
+        }
+        
+        // 发送建议问题
+        function sendSuggestion(text) {
+            document.getElementById('messageInput').value = text;
+            sendMessage();
+        }
+        
+        // 处理回车键
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        // 删除对话
+        async function deleteSession(sessionId) {
+            try {
+                if (!confirm('确定要删除这个对话吗？')) return;
+                
+                console.log('[删除会话] 会话ID:', sessionId);
+                
+                const response = await fetch(`/api/chat/sessions/${sessionId}`, {method: 'DELETE'});
+                
+                if (response.ok) {
+                    console.log('[删除会话] ✅ 删除成功');
+                    
+                    // 如果删除的是当前会话，清空界面
+                    if (sessionId === currentSessionId) {
+                        currentSessionId = null;
+                        const container = document.getElementById('messagesContainer');
+                        container.innerHTML = `
+                            <div class="welcome-screen">
+                                <h1>👋 您好！我是 AgentFlow AI 助手</h1>
+                                <p>我可以帮您：</p>
+                                <div class="suggestions">
+                               <div class="suggestion-card" onclick="sendSuggestion('帮我生成一个JSON数据处理的Agent代码')">
+                                   <div class="suggestion-icon">🤖</div>
+                                   <div class="suggestion-title">生成 Agent 代码</div>
+                                   <div class="suggestion-text">智能生成Python Agent函数</div>
+                               </div>
+                               <div class="suggestion-card" onclick="sendSuggestion('如何设计一个数据处理工作流？需要读取、处理、输出三个步骤')">
+                                   <div class="suggestion-icon">🔄</div>
+                                   <div class="suggestion-title">工作流设计</div>
+                                   <div class="suggestion-text">多Agent串联执行</div>
+                               </div>
+                               <div class="suggestion-card" onclick="sendSuggestion('介绍一下AgentFlow平台的核心功能')">
+                                   <div class="suggestion-icon">💡</div>
+                                   <div class="suggestion-title">平台功能</div>
+                                   <div class="suggestion-text">了解Agent编排系统</div>
+                               </div>
+                               <div class="suggestion-card" onclick="sendSuggestion('推荐一些常用的Agent类型和使用场景')">
+                                   <div class="suggestion-icon">📚</div>
+                                   <div class="suggestion-title">Agent类型</div>
+                                   <div class="suggestion-text">processor/analyzer/converter</div>
+                               </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    loadChatSessions();
+                } else {
+                    console.error('[删除会话] ❌ 失败');
+                    alert('删除会话失败');
+                }
+            } catch (error) {
+                console.error('[删除会话] ❌ 异常:', error);
+                alert('删除会话失败: ' + error.message);
+            }
+        }
+        
+        // 显示配置模态框
+        async function showConfigModal() {
+            document.getElementById('configModal').style.display = 'flex';
+            
+            // 检查是否已有配置
+            try {
+                const response = await fetch('/api/chat/config');
+                const data = await response.json();
+                
+                if (data.configured && data.key_prefix) {
+                    document.getElementById('currentKeyDisplay').style.display = 'block';
+                    document.getElementById('currentKeyText').textContent = data.key_prefix;
+                } else {
+                    document.getElementById('currentKeyDisplay').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('获取配置失败:', error);
+            }
+        }
+        
+        // 关闭配置模态框
+        function closeConfigModal() {
+            document.getElementById('configModal').style.display = 'none';
+            document.getElementById('apiKeyInput').value = '';
+        }
+        
+        // 保存 API Key
+        async function saveApiKey() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            
+            if (!apiKey) {
+                alert('请输入 API Key');
+                return;
+            }
+            
+            if (!apiKey.startsWith('sk-')) {
+                alert('❌ API Key 格式错误，应该以 sk- 开头');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/chat/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({api_key: apiKey})
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('✅ API Key 配置成功！\n\n已保存: ' + (data.key_prefix || '配置成功'));
+                    closeConfigModal();
+                } else {
+                    alert('❌ 配置失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ 保存失败: ' + error.message);
+                console.error('保存API Key失败:', error);
+            }
+        }
+        
+        // 从对话创建Agent和工作流
+        async function createToPlatform(data) {
+            try {
+                console.log('[创建到平台] 数据:', data);
+                
+                const confirmed = confirm(`确认创建以下内容到平台？\n\n` +
+                    `Agents: ${data.agents.map(a => a.name).join(', ')}\n` +
+                    (data.workflow ? `工作流: ${data.workflow.name}` : ''));
+                
+                if (!confirmed) return;
+                
+                // 显示加载状态
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '⏳ 创建中...';
+                btn.disabled = true;
+                
+                const response = await fetch('/api/ai/create-from-chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                console.log('[创建到平台] 结果:', result);
+                
+                if (result.success) {
+                    alert(`✅ 创建成功！\n\n` +
+                          `已创建 ${result.agents.length} 个Agent\n` +
+                          (result.workflow ? `工作流：${result.workflow.name}\n\n` : '') +
+                          `请前往工作台查看和使用！`);
+                    
+                    btn.textContent = '✅ 已创建';
+                    btn.style.background = '#4CAF50';
+                    
+                    // 提示前往工作台
+                    if (confirm('是否立即前往工作台查看？')) {
+                        window.open('/workspace', '_blank');
+                    }
+                } else {
+                    alert('❌ 创建失败：' + (result.error || '未知错误'));
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                console.error('[创建到平台] 错误:', error);
+                alert('❌ 创建失败：' + error.message);
+                event.target.textContent = '🚀 立即创建';
+                event.target.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
+

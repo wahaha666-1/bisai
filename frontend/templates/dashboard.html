@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据看板 - 智链编排平台</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .chart-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .chart-card h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+        
+        .chart-container {
+            width: 100%;
+            height: 350px;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .trend {
+            font-size: 0.85em;
+            margin-top: 8px;
+        }
+        
+        .trend.up {
+            color: #4caf50;
+        }
+        
+        .trend.down {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 页面头部 -->
+        <header>
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>📊 数据看板</h1>
+                    <div class="subtitle">实时监控系统运行状态</div>
+                </div>
+                <div class="header-right">
+                    <a href="/workspace" class="btn" style="background: #667eea; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 15px;">← 返回工作台</a>
+                    <span class="user-info">👤 {{ username }}</span>
+                    <a href="/logout" class="logout-btn">退出登录</a>
+                </div>
+            </div>
+        </header>
+        
+        <!-- 核心指标 -->
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="total-agents">0</div>
+                <div class="metric-label">Agent 总数</div>
+                <div class="trend up">↑ 本周 +2</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="total-workflows">0</div>
+                <div class="metric-label">工作流总数</div>
+                <div class="trend up">↑ 本周 +1</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="total-executions">0</div>
+                <div class="metric-label">总执行次数</div>
+                <div class="trend up">↑ 今日 +5</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="avg-success-rate">0%</div>
+                <div class="metric-label">平均成功率</div>
+                <div class="trend up">↑ 98.5%</div>
+            </div>
+        </div>
+        
+        <!-- 图表区域 -->
+        <div class="dashboard-grid">
+            <!-- Agent 类型分布 -->
+            <div class="chart-card">
+                <h3>📦 Agent 类型分布</h3>
+                <div id="agent-type-chart" class="chart-container"></div>
+            </div>
+            
+            <!-- 工作流状态分布 -->
+            <div class="chart-card">
+                <h3>🔄 工作流状态分布</h3>
+                <div id="workflow-status-chart" class="chart-container"></div>
+            </div>
+            
+            <!-- 执行趋势图 -->
+            <div class="chart-card full-width">
+                <h3>📈 执行趋势（最近7天）</h3>
+                <div id="execution-trend-chart" class="chart-container"></div>
+            </div>
+            
+            <!-- Top Agent 排行 -->
+            <div class="chart-card">
+                <h3>🏆 Top 10 热门 Agent</h3>
+                <div id="top-agents-chart" class="chart-container"></div>
+            </div>
+            
+            <!-- 成功率分布 -->
+            <div class="chart-card">
+                <h3>✅ Agent 成功率分布</h3>
+                <div id="success-rate-chart" class="chart-container"></div>
+            </div>
+        </div>
+        
+        <!-- 页脚 -->
+        <footer>
+            <p>智链编排平台 - 数据可视化看板</p>
+            <p style="font-size: 12px; color: #999; margin-top: 5px;">数据每30秒自动刷新</p>
+        </footer>
+    </div>
+    
+    <script>
+        // 加载数据
+        async function loadDashboardData() {
+            try {
+                // 加载 Agent 数据
+                const agentsResp = await fetch('/api/agents');
+                const agents = agentsResp.ok ? await agentsResp.json() : [];
+                
+                // 加载工作流数据
+                const workflowsResp = await fetch('/api/workflows');
+                const workflows = workflowsResp.ok ? await workflowsResp.json() : [];
+                
+                // 更新核心指标
+                document.getElementById('total-agents').textContent = agents.length;
+                document.getElementById('total-workflows').textContent = workflows.length;
+                
+                let totalExec = workflows.reduce((sum, w) => sum + (w.total_executions || 0), 0);
+                document.getElementById('total-executions').textContent = totalExec;
+                
+                let avgSuccess = workflows.length > 0 
+                    ? workflows.reduce((sum, w) => sum + (w.success_rate || 0), 0) / workflows.length * 100
+                    : 0;
+                document.getElementById('avg-success-rate').textContent = avgSuccess.toFixed(1) + '%';
+                
+                // 渲染图表
+                renderAgentTypeChart(agents);
+                renderWorkflowStatusChart(workflows);
+                renderExecutionTrendChart();
+                renderTopAgentsChart(agents);
+                renderSuccessRateChart(agents);
+                
+            } catch (error) {
+                console.error('加载数据失败:', error);
+            }
+        }
+        
+        // Agent 类型分布饼图
+        function renderAgentTypeChart(agents) {
+            const chart = echarts.init(document.getElementById('agent-type-chart'));
+            
+            // 统计类型分布
+            const typeCount = {};
+            agents.forEach(agent => {
+                const type = agent.agent_type || 'other';
+                typeCount[type] = (typeCount[type] || 0) + 1;
+            });
+            
+            const data = Object.entries(typeCount).map(([name, value]) => ({name, value}));
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c} ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    right: 10,
+                    top: 'center'
+                },
+                series: [{
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    label: {
+                        show: false,
+                        position: 'center'
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: 20,
+                            fontWeight: 'bold'
+                        }
+                    },
+                    labelLine: {
+                        show: false
+                    },
+                    data: data
+                }],
+                color: ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b']
+            };
+            
+            chart.setOption(option);
+        }
+        
+        // 工作流状态分布
+        function renderWorkflowStatusChart(workflows) {
+            const chart = echarts.init(document.getElementById('workflow-status-chart'));
+            
+            const statusCount = {active: 0, inactive: 0, pending: 0};
+            workflows.forEach(w => {
+                const status = w.status || 'active';
+                statusCount[status] = (statusCount[status] || 0) + 1;
+            });
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item'
+                },
+                series: [{
+                    type: 'pie',
+                    radius: '60%',
+                    data: [
+                        {value: statusCount.active, name: '活跃'},
+                        {value: statusCount.inactive, name: '停用'},
+                        {value: statusCount.pending, name: '待定'}
+                    ],
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                }],
+                color: ['#28a745', '#dc3545', '#ffc107']
+            };
+            
+            chart.setOption(option);
+        }
+        
+        // 执行趋势折线图
+        function renderExecutionTrendChart() {
+            const chart = echarts.init(document.getElementById('execution-trend-chart'));
+            
+            // 模拟7天数据
+            const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+            const execData = [12, 18, 25, 32, 28, 35, 42];
+            const successData = [11, 17, 24, 30, 27, 34, 41];
+            
+            const option = {
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: ['总执行', '成功执行']
+                },
+                xAxis: {
+                    type: 'category',
+                    data: days
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: [
+                    {
+                        name: '总执行',
+                        type: 'line',
+                        data: execData,
+                        smooth: true,
+                        itemStyle: {color: '#667eea'}
+                    },
+                    {
+                        name: '成功执行',
+                        type: 'line',
+                        data: successData,
+                        smooth: true,
+                        itemStyle: {color: '#28a745'}
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+        }
+        
+        // Top Agent 排行柱状图
+        function renderTopAgentsChart(agents) {
+            const chart = echarts.init(document.getElementById('top-agents-chart'));
+            
+            // 按执行次数排序
+            const sortedAgents = [...agents]
+                .sort((a, b) => (b.total_executions || 0) - (a.total_executions || 0))
+                .slice(0, 10);
+            
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {type: 'shadow'}
+                },
+                xAxis: {
+                    type: 'value'
+                },
+                yAxis: {
+                    type: 'category',
+                    data: sortedAgents.map(a => a.name),
+                    axisLabel: {
+                        interval: 0,
+                        formatter: function(value) {
+                            return value.length > 10 ? value.substr(0, 10) + '...' : value;
+                        }
+                    }
+                },
+                series: [{
+                    type: 'bar',
+                    data: sortedAgents.map(a => a.total_executions || 0),
+                    itemStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                            {offset: 0, color: '#667eea'},
+                            {offset: 1, color: '#764ba2'}
+                        ])
+                    }
+                }]
+            };
+            
+            chart.setOption(option);
+        }
+        
+        // 成功率分布
+        function renderSuccessRateChart(agents) {
+            const chart = echarts.init(document.getElementById('success-rate-chart'));
+            
+            // 成功率分段统计
+            const ranges = {
+                '90-100%': 0,
+                '70-90%': 0,
+                '50-70%': 0,
+                '0-50%': 0
+            };
+            
+            agents.forEach(agent => {
+                const rate = (agent.success_rate || 0) * 100;
+                if (rate >= 90) ranges['90-100%']++;
+                else if (rate >= 70) ranges['70-90%']++;
+                else if (rate >= 50) ranges['50-70%']++;
+                else ranges['0-50%']++;
+            });
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item'
+                },
+                series: [{
+                    type: 'pie',
+                    radius: ['30%', '60%'],
+                    data: Object.entries(ranges).map(([name, value]) => ({name, value})),
+                    label: {
+                        formatter: '{b}\n{c} 个'
+                    }
+                }],
+                color: ['#28a745', '#5bc0de', '#f0ad4e', '#d9534f']
+            };
+            
+            chart.setOption(option);
+        }
+        
+        // 页面加载
+        window.onload = () => {
+            loadDashboardData();
+            
+            // 30秒自动刷新
+            setInterval(loadDashboardData, 30000);
+            
+            // 响应式调整
+            window.addEventListener('resize', () => {
+                echarts.init(document.getElementById('agent-type-chart')).resize();
+                echarts.init(document.getElementById('workflow-status-chart')).resize();
+                echarts.init(document.getElementById('execution-trend-chart')).resize();
+                echarts.init(document.getElementById('top-agents-chart')).resize();
+                echarts.init(document.getElementById('success-rate-chart')).resize();
+            });
+        };
+    </script>
+</body>
+</html>
+
+

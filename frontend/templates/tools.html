@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工具管理 - AgentFlow</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .tools-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .tool-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .tool-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .tool-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .tool-description {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .tool-parameters {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .parameter-item {
+            margin-bottom: 10px;
+        }
+        
+        .test-section {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .test-input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        
+        .test-button {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .test-button:hover {
+            background: #5568d3;
+        }
+        
+        .test-result {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .error-result {
+            border-left-color: #ef4444;
+            background: #fee;
+        }
+    </style>
+</head>
+<body>
+    <div class="tools-container">
+        <header style="margin-bottom: 30px;">
+            <h1>🛠️ 工具管理中心</h1>
+            <p style="color: #666;">测试和管理AgentFlow工具系统</p>
+            <a href="/workspace" style="color: #667eea;">← 返回工作台</a>
+        </header>
+        
+        <div id="tools-list">
+            <p style="text-align: center; padding: 40px;">⏳ 加载工具中...</p>
+        </div>
+    </div>
+    
+    <script>
+        // 加载工具列表
+        async function loadTools() {
+            try {
+                const response = await fetch('/api/tools');
+                const data = await response.json();
+                
+                if (data.success && data.tools) {
+                    renderTools(data.tools);
+                } else {
+                    document.getElementById('tools-list').innerHTML = 
+                        '<p style="color: red;">❌ 加载失败: ' + (data.error || '未知错误') + '</p>';
+                }
+            } catch (error) {
+                document.getElementById('tools-list').innerHTML = 
+                    '<p style="color: red;">❌ 网络错误: ' + error.message + '</p>';
+            }
+        }
+        
+        // 渲染工具列表
+        function renderTools(tools) {
+            const container = document.getElementById('tools-list');
+            
+            if (tools.length === 0) {
+                container.innerHTML = '<p>暂无工具</p>';
+                return;
+            }
+            
+            container.innerHTML = tools.map((tool, index) => `
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div class="tool-name">📦 ${tool.name}</div>
+                        <span style="color: #28a745; font-weight: bold;">✓ 可用</span>
+                    </div>
+                    
+                    <div class="tool-description">
+                        ${tool.description}
+                    </div>
+                    
+                    <div class="tool-parameters">
+                        <strong>📝 参数定义：</strong>
+                        <pre style="margin-top: 10px; overflow-x: auto;">${JSON.stringify(tool.parameters, null, 2)}</pre>
+                    </div>
+                    
+                    <div class="test-section">
+                        <strong>🧪 测试工具</strong>
+                        <div style="margin-top: 10px;">
+                            <label>参数 (JSON格式)：</label>
+                            <textarea 
+                                id="args-${index}" 
+                                class="test-input" 
+                                rows="4"
+                                placeholder='例如: {"city": "北京"}'
+                            >{}</textarea>
+                            
+                            <button class="test-button" onclick="testTool('${tool.name}', ${index})">
+                                🚀 执行测试
+                            </button>
+                            
+                            <div id="result-${index}" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 测试工具
+        async function testTool(toolName, index) {
+            const argsInput = document.getElementById(`args-${index}`);
+            const resultDiv = document.getElementById(`result-${index}`);
+            
+            try {
+                // 解析参数
+                const args = JSON.parse(argsInput.value);
+                
+                // 显示加载状态
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'test-result';
+                resultDiv.textContent = '⏳ 执行中...';
+                
+                // 调用工具
+                const response = await fetch(`/api/tools/${toolName}/execute`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        arguments: args
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // 显示结果
+                if (data.success) {
+                    resultDiv.className = 'test-result';
+                    resultDiv.textContent = '✅ 执行成功\n\n' + JSON.stringify(data.result, null, 2);
+                } else {
+                    resultDiv.className = 'test-result error-result';
+                    resultDiv.textContent = '❌ 执行失败\n\n' + (data.error || JSON.stringify(data, null, 2));
+                }
+            } catch (error) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'test-result error-result';
+                resultDiv.textContent = '❌ 错误\n\n' + error.message;
+            }
+        }
+        
+        // 页面加载时加载工具
+        loadTools();
+    </script>
+</body>
+</html>
+

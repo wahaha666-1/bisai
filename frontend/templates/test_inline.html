@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>内联测试 - AgentFlow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background: #218838;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 内联JavaScript测试</h1>
+    <p>这个页面完全不依赖外部JS文件</p>
+    
+    <button onclick="testWorkflow1()">测试工作流 #1</button>
+    <button onclick="testWorkflow2()">测试工作流 #2</button>
+    <button onclick="testWorkflow3()">测试工作流 #3</button>
+    
+    <div id="result">点击按钮测试...</div>
+    
+    <script>
+        async function testWorkflow1() {
+            await testWorkflow(1, '第一个测试');
+        }
+        
+        async function testWorkflow2() {
+            await testWorkflow(2, '计算器演示');
+        }
+        
+        async function testWorkflow3() {
+            await testWorkflow(3, '多步骤处理流程');
+        }
+        
+        async function testWorkflow(workflowId, workflowName) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = `正在执行工作流 #${workflowId}...`;
+            
+            try {
+                console.log(`[测试] 执行工作流 #${workflowId}`);
+                
+                const response = await fetch(`/api/workflows/${workflowId}/execute`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                console.log('[测试] 响应状态:', response.status);
+                
+                const result = await response.json();
+                console.log('[测试] 返回数据:', result);
+                
+                if (result.success) {
+                    let output = `✅ 工作流「${workflowName}」执行成功！\n\n`;
+                    output += `执行时间: ${result.execution_time.toFixed(3)}秒\n`;
+                    output += `执行ID: ${result.execution_id}\n\n`;
+                    output += `结果:\n`;
+                    output += JSON.stringify(result.output, null, 2);
+                    
+                    resultDiv.textContent = output;
+                    
+                    alert(output);
+                } else {
+                    const errorMsg = `❌ 执行失败！\n\n错误信息:\n${result.error}`;
+                    resultDiv.textContent = errorMsg;
+                    alert(errorMsg);
+                }
+            } catch (error) {
+                const errorMsg = `❌ 发生错误！\n\n${error.message}`;
+                console.error('[测试] 错误:', error);
+                resultDiv.textContent = errorMsg;
+                alert(errorMsg);
+            }
+        }
+        
+        console.log('[内联测试] 页面加载完成，testWorkflow函数已定义');
+    </script>
+</body>
+</html>
+

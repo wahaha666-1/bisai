@@ -854,14 +854,6 @@ sqlite3 new_babyagi.db < backup.sql
 
 ---
 
-## 📞 联系方式
-
-- 💬 问题反馈：[GitHub Issues](https://github.com/your-repo/issues)
-- 📧 邮件联系：your-email@example.com
-- 🌐 项目主页：[GitHub](https://github.com/your-repo)
-
----
-
 ## 🙏 致谢
 
 感谢以下开源项目：

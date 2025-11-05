@@ -1689,11 +1689,18 @@ def upgrade_agents_to_ai():
                     # 4. 更新代码
                     active_version.code = ai_code
                     
-                    # 5. 标记为AI驱动
-                    metadata = active_version.agent_metadata or {}
-                    metadata['ai_powered'] = True
-                    metadata['upgraded_at'] = datetime.now().isoformat()
-                    active_version.agent_metadata = metadata
+                    # 5. 标记为AI驱动（创建新字典确保SQLAlchemy检测到变化）
+                    from sqlalchemy.orm.attributes import flag_modified
+                    
+                    old_metadata = active_version.agent_metadata or {}
+                    active_version.agent_metadata = {
+                        **old_metadata,
+                        'ai_powered': True,
+                        'upgraded_at': datetime.now().isoformat()
+                    }
+                    
+                    # 明确标记字段已修改
+                    flag_modified(active_version, 'agent_metadata')
                     
                     upgraded.append(agent_name)
                     print(f"[🚀 通用AI升级] ✅ {agent_name} 升级成功并标记为AI驱动")

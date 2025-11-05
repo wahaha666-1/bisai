@@ -108,7 +108,7 @@ def log_request():
 
 @app.route('/')
 def index():
-    """主工作台 - 现代化工作台"""
+    """主工作台"""
     return render_template('workspace_new.html')
 
 @app.route('/workspace')
@@ -117,7 +117,7 @@ def workspace():
     if 'user_id' not in session:
         return redirect('/login')
     
-    return render_template('index.html', 
+    return render_template('workspace_new.html', 
                          username=session.get('username'),
                          role=session.get('role'))
 
@@ -153,19 +153,10 @@ def register_page():
 @app.route('/demo')
 def demo_page():
     """演示页面 - 展示示例"""
-    return render_template('index.html', 
+    return render_template('workspace_new.html', 
                          username='Demo User',
                          role='user')
 
-@app.route('/ai-assistant')
-def ai_assistant():
-    """AI 助手页面"""
-    if 'user_id' not in session:
-        return redirect('/login')
-    
-    return render_template('ai_assistant.html',
-                         username=session.get('username'),
-                         role=session.get('role'))
 
 @app.route('/chat')
 def chat_page():
@@ -207,15 +198,6 @@ def dashboard():
     """🆕 社区广场 - 展示优质Agent和工作流（公开访问）"""
     return render_template('community.html')
 
-@app.route('/dashboard-old')
-def dashboard_old():
-    """旧版数据看板（需要登录）"""
-    if 'user_id' not in session:
-        return redirect('/login')
-    
-    return render_template('dashboard.html',
-                         username=session.get('username'),
-                         role=session.get('role'))
 
 @app.route('/logout')
 def logout():

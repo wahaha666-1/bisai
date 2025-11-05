@@ -25,7 +25,7 @@ async function loadStats() {
             
             if (workflows.length > 0 && totalExec > 0) {
                 let avgSuccess = workflows.reduce((sum, w) => sum + (w.success_rate || 0), 0) / workflows.length;
-                document.getElementById('success-rate').textContent = (avgSuccess * 100).toFixed(1) + '%';
+                document.getElementById('success-rate').textContent = avgSuccess.toFixed(1) + '%';
             } else {
                 document.getElementById('success-rate').textContent = '0%';
             }
@@ -63,7 +63,7 @@ async function loadAgents() {
                     </div>
                     <div class="card-meta">
                         执行次数: ${agent.total_executions || 0} | 
-                        成功率: ${((agent.success_rate || 0) * 100).toFixed(1)}%
+                        成功率: ${(agent.success_rate || 0).toFixed(1)}%
                     </div>
                     <div style="margin-top: 15px;">
                         <button class="action-btn btn-delete" onclick="deleteAgent('${agent.name}')">🗑️ 删除</button>
@@ -110,10 +110,11 @@ async function loadWorkflows() {
                     </div>
                     <div class="card-meta">
                         执行: ${workflow.total_executions || 0} 次 | 
-                        成功率: ${((workflow.success_rate || 0) * 100).toFixed(1)}%
+                        成功率: ${(workflow.success_rate || 0).toFixed(1)}%
                     </div>
                     <div style="margin-top: 15px;">
                         <button class="action-btn btn-execute" onclick="executeWorkflow(${workflow.id}, '${workflow.name}')">▶️ 执行</button>
+                        <button class="action-btn" onclick="window.open('/workflow-editor?id=${workflow.id}', '_blank')" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">🎨 可视化编辑</button>
                         <button class="action-btn btn-delete" onclick="deleteWorkflow(${workflow.id}, '${workflow.name}')">🗑️ 删除</button>
                     </div>
                 </div>

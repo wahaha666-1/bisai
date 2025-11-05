@@ -126,6 +126,7 @@ class Workflow(Base):
     last_executed = Column(DateTime)
     
     executions = relationship('WorkflowExecution', back_populates='workflow', cascade="all, delete-orphan")
+    api_keys = relationship('WorkflowAPIKey', back_populates='workflow', cascade="all, delete-orphan")
 
 # 工作流执行记录表
 class WorkflowExecution(Base):
@@ -282,4 +283,24 @@ class SecretKey(Base):
             self._encrypted_value = fernet.encrypt(plaintext_value.encode())
         else:
             self._encrypted_value = None
+
+# ============================================================================
+# 工作流API密钥表
+# ============================================================================
+
+class WorkflowAPIKey(Base):
+    """工作流API密钥 - 用于外部调用"""
+    __tablename__ = 'workflow_api_keys'
+    
+    id = Column(Integer, primary_key=True)
+    workflow_id = Column(Integer, ForeignKey('workflows.id'), nullable=False)
+    api_key = Column(String(64), unique=True, nullable=False, index=True)
+    name = Column(String(100), default='Default Key')  # 密钥备注名
+    is_active = Column(Boolean, default=True)
+    calls_count = Column(Integer, default=0)  # 调用次数
+    last_used = Column(DateTime)  # 最后使用时间
+    created_date = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String)
+    
+    workflow = relationship('Workflow', back_populates='api_keys')
 

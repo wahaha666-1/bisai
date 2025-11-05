@@ -5,6 +5,8 @@
 from flask import Blueprint, jsonify, request, session
 from backend.database import Database
 from backend.engine import WorkflowEngine
+import secrets
+from datetime import datetime
 
 # 创建 Blueprint
 api = Blueprint('api', __name__, url_prefix='/api')
@@ -32,6 +34,50 @@ def get_agents():
         with db.session_scope() as db_session:
             agents = db.get_all_agents(db_session)
             return jsonify(agents), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@api.route('/community/data', methods=['GET'])
+def get_community_data():
+    """
+    获取社区广场数据（本地+外部）
+    
+    Query参数:
+        include_external: bool - 是否包含外部数据，默认True
+        use_mock: bool - 是否使用模拟外部数据，默认True
+    """
+    try:
+        include_external = request.args.get('include_external', 'true').lower() == 'true'
+        use_mock = request.args.get('use_mock', 'true').lower() == 'true'
+        
+        # 获取本地数据
+        with db.session_scope() as db_session:
+            local_agents = db.get_all_agents(db_session)
+            local_workflows = db.get_all_workflows(db_session)
+        
+        result = {
+            'local': {
+                'agents': local_agents,
+                'workflows': local_workflows
+            },
+            'external': {
+                'agents': [],
+                'workflows': []
+            }
+        }
+        
+        # 如果需要外部数据
+        if include_external:
+            try:
+                from backend.external_community import external_fetcher
+                external_data = external_fetcher.get_combined_data(use_mock=use_mock)
+                result['external'] = external_data
+            except Exception as e:
+                print(f"[API] 获取外部数据失败: {e}")
+                # 即使外部数据失败，也返回本地数据
+        
+        return jsonify(result), 200
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -139,6 +185,96 @@ def create_workflow():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@api.route('/workflows/<int:workflow_id>', methods=['GET', 'PUT', 'DELETE'])
+def manage_workflow(workflow_id):
+    """管理单个工作流：获取(GET)、更新(PUT)、删除(DELETE)"""
+    from backend.models import Workflow, WorkflowExecution
+    
+    if request.method == 'GET':
+        # 获取工作流详情
+        try:
+            with db.session_scope() as db_session:
+                workflow = db_session.query(Workflow).filter_by(id=workflow_id).first()
+                if not workflow:
+                    return jsonify({'error': '工作流不存在'}), 404
+                
+                return jsonify({
+                    'id': workflow.id,
+                    'name': workflow.name,
+                    'description': workflow.description,
+                    'workflow_definition': workflow.workflow_definition,
+                    'category': workflow.category,
+                    'status': workflow.status,
+                    'created_date': workflow.created_date.isoformat() if workflow.created_date else None
+                }), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'PUT':
+        # 更新工作流定义
+        try:
+            data = request.get_json()
+            
+            with db.session_scope() as db_session:
+                workflow = db_session.query(Workflow).filter_by(id=workflow_id).first()
+                if not workflow:
+                    return jsonify({'error': '工作流不存在'}), 404
+                
+                # 更新字段
+                if 'name' in data:
+                    workflow.name = data['name']
+                if 'description' in data:
+                    workflow.description = data['description']
+                if 'workflow_definition' in data:
+                    import json
+                    # 确保是JSON字符串
+                    if isinstance(data['workflow_definition'], dict):
+                        workflow.workflow_definition = json.dumps(data['workflow_definition'], ensure_ascii=False)
+                    else:
+                        workflow.workflow_definition = data['workflow_definition']
+                if 'category' in data:
+                    workflow.category = data['category']
+                if 'status' in data:
+                    workflow.status = data['status']
+                
+                print(f"[更新工作流] ✅ 工作流 #{workflow_id} 更新成功")
+                return jsonify({
+                    'message': '工作流更新成功',
+                    'workflow_id': workflow_id
+                }), 200
+                
+        except Exception as e:
+            print(f"[更新工作流] ❌ 更新失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'DELETE':
+        # 删除工作流
+        try:
+            with db.session_scope() as db_session:
+                workflow = db_session.query(Workflow).filter_by(id=workflow_id).first()
+                if workflow:
+                    # 先删除所有关联的执行记录（解决外键约束问题）
+                    executions = db_session.query(WorkflowExecution).filter_by(workflow_id=workflow_id).all()
+                    for execution in executions:
+                        db_session.delete(execution)
+                    
+                    print(f"[删除工作流] 已删除 {len(executions)} 条执行记录")
+                    
+                    # 然后删除工作流本身
+                    db_session.delete(workflow)
+                    
+                    print(f"[删除工作流] 成功删除工作流 #{workflow_id}: {workflow.name}")
+                    return jsonify({'message': f'工作流 #{workflow_id} 删除成功'}), 200
+                else:
+                    return jsonify({'error': '工作流不存在'}), 404
+        except Exception as e:
+            print(f"[删除工作流] ❌ 删除失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
 
 @api.route('/workflows/<int:workflow_id>/execute', methods=['POST'])
 def execute_workflow(workflow_id):
@@ -396,21 +532,6 @@ def delete_agent(agent_name):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@api.route('/workflows/<int:workflow_id>', methods=['DELETE'])
-def delete_workflow(workflow_id):
-    """删除工作流"""
-    try:
-        from backend.models import Workflow
-        with db.session_scope() as db_session:
-            workflow = db_session.query(Workflow).filter_by(id=workflow_id).first()
-            if workflow:
-                db_session.delete(workflow)
-                return jsonify({'message': f'工作流 #{workflow_id} 删除成功'}), 200
-            else:
-                return jsonify({'error': '工作流不存在'}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 # ============================================================================
 # AI 对话 API
 # ============================================================================
@@ -438,6 +559,157 @@ def manage_chat_sessions():
                 return jsonify({'session_id': session_id, 'message': '会话创建成功'}), 201
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+
+
+@api.route('/ai/create-from-chat', methods=['POST'])
+def create_from_chat():
+    """🆕 从聊天界面一键创建Agent和工作流"""
+    try:
+        data = request.get_json()
+        print(f"\n{'='*60}")
+        print(f"[API] 从聊天创建Agent和工作流")
+        print(f"{'='*60}")
+        print(f"数据: {data}")
+        
+        created_agents = []
+        created_workflow = None
+        
+        with db.session_scope() as session:
+            # 1. 创建所有Agents
+            if 'agents' in data and isinstance(data['agents'], list):
+                for agent_data in data['agents']:
+                    try:
+                        print(f"\n[创建Agent] {agent_data['name']}")
+                        
+                        agent_id = db.add_or_update_agent(
+                            session=session,
+                            name=agent_data['name'],
+                            code=agent_data['code'],
+                            metadata={
+                                'agent_type': agent_data.get('type', 'processor'),
+                                'description': agent_data.get('description', ''),
+                                'category': agent_data.get('category', '其他'),
+                                'icon': agent_data.get('icon', '🤖')
+                            },
+                            dependencies=[],
+                            triggers=[],
+                            input_parameters={},
+                            output_parameters={}
+                        )
+                        
+                        # 注册到内存Registry
+                        registry.register_agent(
+                            name=agent_data['name'],
+                            agent_type=agent_data.get('type', 'processor'),
+                            description=agent_data.get('description', ''),
+                            code=agent_data['code'],
+                            category=agent_data.get('category', '其他'),
+                            icon=agent_data.get('icon', '🤖')
+                        )
+                        
+                        created_agents.append({
+                            'id': agent_id,
+                            'name': agent_data['name']
+                        })
+                        print(f"  ✅ 创建成功，ID: {agent_id}")
+                        
+                    except Exception as e:
+                        print(f"  ❌ 创建失败: {e}")
+                        raise Exception(f"创建Agent '{agent_data['name']}' 失败: {str(e)}")
+            
+            # 2. 创建工作流
+            if 'workflow' in data:
+                workflow_data = data['workflow']
+                try:
+                    print(f"\n[创建工作流] {workflow_data['name']}")
+                    
+                    # 兼容两种字段名：workflow_definition 或 definition
+                    workflow_def = workflow_data.get('workflow_definition') or workflow_data.get('definition')
+                    
+                    # 如果没有提供workflow_definition，自动从agents生成简单的顺序执行流程
+                    if not workflow_def and 'agents' in data:
+                        print("  [自动生成] 从agents列表自动生成顺序执行工作流")
+                        agent_names = []  # 只存储名称字符串
+                        sequence = []
+                        
+                        for i, agent in enumerate(data['agents']):
+                            agent_name = agent['name']
+                            agent_names.append(agent_name)  # 只添加字符串名称
+                            
+                            # 生成sequence
+                            if i == 0:
+                                # 第一个agent从input获取数据
+                                input_mapping = {'input_data': '$.input'}
+                            else:
+                                # 后续agent从前一个agent的输出获取数据
+                                prev_agent_name = data['agents'][i-1]['name']
+                                input_mapping = {'input_data': f'$.{prev_agent_name}'}
+                            
+                            sequence.append({
+                                'agent': agent_name,
+                                'input_mapping': input_mapping,
+                                'output_key': agent_name
+                            })
+                        
+                        # 🔥 修复：统一使用 input_data 参数
+                        # 修改所有sequence的input_mapping，统一使用input_data参数名
+                        for step in sequence:
+                            if 'input_mapping' in step:
+                                # 将所有映射的参数名改为 input_data
+                                old_mapping = step['input_mapping']
+                                step['input_mapping'] = {'input_data': list(old_mapping.values())[0] if old_mapping else '$.input'}
+                        
+                        workflow_def = {
+                            'agents': agent_names,  # 使用字符串列表而不是字典列表
+                            'sequence': sequence
+                        }
+                        print(f"  [自动生成] 生成了包含 {len(agent_names)} 个Agent的顺序执行流程")
+                    
+                    if not workflow_def:
+                        raise ValueError("缺少workflow_definition字段，且无法自动生成")
+                    
+                    workflow_id = db.create_workflow(
+                        session=session,
+                        name=workflow_data['name'],
+                        description=workflow_data.get('description', ''),
+                        workflow_definition=workflow_def,
+                        category=workflow_data.get('category', '其他'),
+                        trigger_type='manual'
+                    )
+                    
+                    created_workflow = {
+                        'id': workflow_id,
+                        'name': workflow_data['name']
+                    }
+                    print(f"  ✅ 创建成功，ID: {workflow_id}")
+                    
+                except Exception as e:
+                    print(f"  ❌ 创建失败: {e}")
+                    raise Exception(f"创建工作流失败: {str(e)}")
+        
+        print(f"\n{'='*60}")
+        print(f"✅ 全部创建完成！")
+        print(f"  Agents: {len(created_agents)}")
+        print(f"  工作流: {'是' if created_workflow else '否'}")
+        print(f"{'='*60}\n")
+        
+        return jsonify({
+            'success': True,
+            'message': f'成功创建 {len(created_agents)} 个Agent' + 
+                      (f'和工作流 {created_workflow["name"]}' if created_workflow else ''),
+            'agents': created_agents,
+            'workflow': created_workflow
+        })
+        
+    except Exception as e:
+        print(f"\n[API] ❌ 创建失败: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 @api.route('/chat/sessions/<int:session_id>/messages', methods=['GET', 'POST'])
@@ -542,6 +814,11 @@ def manage_chat_messages(session_id):
 ### 1. 简单场景（1-3个Agent）
 直接生成代码并在回复末尾添加创建标记：
 
+**⚠️ 重要：统一参数命名规范**
+- 第一个Agent（接收用户输入）：参数名必须是 `input_data`
+- 后续Agent（接收前一个Agent输出）：参数名必须是 `input_data`
+- 返回格式：必须包含 `{'success': True/False, 'result': {...}}`
+
 ```CREATE_AGENTS_AND_WORKFLOW
 {
   "agents": [
@@ -549,7 +826,7 @@ def manage_chat_messages(session_id):
       "name": "agent名称",
       "type": "processor",
       "description": "Agent描述",
-      "code": "def agent_function(param1: str = 'default') -> dict:\\n    \"\"\"函数说明\"\"\"\\n    try:\\n        result = 处理逻辑\\n        return {'success': True, 'result': result}\\n    except Exception as e:\\n        return {'success': False, 'error': str(e)}"
+      "code": "def agent_function(input_data: dict) -> dict:\\n    \"\"\"函数说明\"\"\"\\n    try:\\n        # 从input_data中提取所需数据\\n        value = input_data.get('key', 'default')\\n        result = 处理逻辑\\n        return {'success': True, 'result': result}\\n    except Exception as e:\\n        return {'success': False, 'error': str(e)}"
     }
   ],
   "workflow": {
@@ -617,31 +894,43 @@ def manage_chat_messages(session_id):
 
 ## 代码质量要求
 
-1. **函数签名**
-```python
-def agent_name(param1: str = 'default', param2: int = 0) -> dict:
-```
+**重要：生成简洁高效的代码！避免过长的模拟数据，每个Agent代码控制在30-50行内。**
 
-2. **文档字符串**
+1. **函数签名（必须遵守）**
+- 所有Agent统一使用 input_data 作为参数名
+- 函数签名示例：def agent_name(input_data: dict) -> dict
+- ✅ 正确：def data_crawler(input_data: dict) -> dict
+- ❌ 错误：def data_crawler(keyword: str) -> dict
+- 提取数据：keyword = input_data.get('keyword') or input_data
+
+2. **文档字符串**（简洁版）
 ```python
-\"\"\"Agent功能的详细说明
-    
+\"\"\"Agent功能简述
 Args:
     param1: 参数说明
-    param2: 参数说明
-    
 Returns:
-    dict: 返回值说明
+    dict: 包含success和result的字典
 \"\"\"
 ```
 
 3. **错误处理**
 ```python
 try:
-    # 主要逻辑
+    # 核心业务逻辑（简洁实现）
+    # 模拟数据：使用random生成或简单字典，不要超过5-10行
+    result = process_data()
     return {'success': True, 'result': result}
 except Exception as e:
     return {'success': False, 'error': str(e)}
+```
+
+4. **模拟数据规范**
+```python
+# ✅ 好的做法：简洁的模拟数据
+cities_data = {'北京': {'temp': 25, 'weather': '晴'}, '上海': {'temp': 28, 'weather': '多云'}}
+
+# ❌ 避免：超长的模拟数据库
+# 不要写几十行的数据字典
 ```
 
 4. **标准返回格式**
@@ -886,145 +1175,6 @@ def generate_agent_code():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-@api.route('/ai/create-from-chat', methods=['POST'])
-def create_from_chat():
-    """从AI对话创建Agent和工作流"""
-    try:
-        data = request.get_json()
-        agents = data.get('agents', [])
-        workflow = data.get('workflow', {})
-        
-        if not agents:
-            return jsonify({'error': '没有Agent定义'}), 400
-        
-        created_agents = []
-        created_workflow = None
-        
-        # 创建Agents
-        for agent_data in agents:
-            agent_name = agent_data.get('name')
-            agent_code = agent_data.get('code')
-            agent_type = agent_data.get('type', 'processor')
-            description = agent_data.get('description', '')
-            
-            print(f"\n[创建Agent] 开始处理: {agent_name}")
-            print(f"[创建Agent] 类型: {agent_type}")
-            print(f"[创建Agent] 代码长度: {len(agent_code) if agent_code else 0}")
-            
-            if not agent_name or not agent_code:
-                print(f"[创建Agent] ❌ 跳过：缺少name或code")
-                continue
-            
-            try:
-                # 执行代码以注册函数
-                exec_globals = {}
-                print(f"[创建Agent] 开始执行代码...")
-                exec(agent_code, exec_globals)
-                print(f"[创建Agent] 代码执行成功，globals: {list(exec_globals.keys())}")
-                
-                # 查找定义的函数
-                agent_func = None
-                for name, obj in exec_globals.items():
-                    if callable(obj) and not name.startswith('_'):
-                        agent_func = obj
-                        print(f"[创建Agent] 找到函数: {name}")
-                        break
-                
-                if agent_func:
-                    # 直接添加到registry（绕过装饰器，因为动态函数无法获取源代码）
-                    print(f"[创建Agent] 开始注册Agent到registry...")
-                    
-                    # 直接存储到registry（注意：字段名必须是agent_type，与执行引擎匹配）
-                    registry.agents[agent_name] = {
-                        'name': agent_name,
-                        'agent_type': agent_type,  # 修复：改为agent_type
-                        'description': description,
-                        'function': agent_func,
-                        'code': agent_code,
-                        'category': '动态创建',
-                        'icon': 'ai'
-                    }
-                    
-                    # 保存到数据库
-                    try:
-                        with db.session_scope() as db_session:
-                            # 构建metadata
-                            metadata = {
-                                'agent_type': agent_type,
-                                'category': 'AI动态创建',
-                                'icon': '🤖',
-                                'description': description
-                            }
-                            
-                            # 创建或更新Agent（使用正确的方法名和参数）
-                            db.add_or_update_agent(
-                                session=db_session,
-                                name=agent_name,
-                                code=agent_code,
-                                metadata=metadata,
-                                dependencies=[],
-                                triggers=[],
-                                input_parameters=[],
-                                output_parameters=[],
-                                imports=None
-                            )
-                        print(f"[创建Agent] ✅ 已保存到数据库")
-                    except Exception as db_error:
-                        import traceback
-                        print(f"[创建Agent] ⚠️ 数据库保存失败: {db_error}")
-                        traceback.print_exc()
-                        # 不阻断流程，Agent已在内存中
-                    
-                    created_agents.append(agent_name)
-                    print(f"[创建Agent] ✅ 成功注册: {agent_name}")
-                else:
-                    print(f"[创建Agent] ❌ 未找到可调用函数")
-                    
-            except Exception as e:
-                import traceback
-                print(f"[创建Agent] ❌ 创建Agent '{agent_name}' 失败: {e}")
-                print(f"[创建Agent] 详细错误:")
-                traceback.print_exc()
-                continue
-        
-        # 创建工作流（如果提供）
-        if workflow and created_agents:
-            workflow_name = workflow.get('name', 'AI生成工作流')
-            workflow_desc = workflow.get('description', '由AI助手创建')
-            
-            # 构建工作流定义（修复：sequence应该是字典列表，不是整数列表）
-            workflow_def = {
-                'agents': created_agents,
-                'sequence': []  # 空sequence表示按agents顺序执行
-            }
-            
-            try:
-                with db.session_scope() as db_session:
-                    workflow_id = db.create_workflow(
-                        db_session,
-                        name=workflow_name,
-                        description=workflow_desc,
-                        workflow_definition=workflow_def  # 修正参数名
-                    )
-                    created_workflow = {
-                        'id': workflow_id,
-                        'name': workflow_name
-                    }
-            except Exception as e:
-                print(f"创建工作流失败: {e}")
-        
-        return jsonify({
-            'success': True,
-            'agents': created_agents,
-            'workflow': created_workflow,
-            'message': f'成功创建 {len(created_agents)} 个Agent' + (f'和工作流 {workflow_name}' if created_workflow else '')
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
 # ============================================================================
 # 工具系统 API
 # ============================================================================
@@ -1144,11 +1294,14 @@ def batch_delete_agents():
 def batch_delete_workflows():
     """批量删除Workflows"""
     try:
+        from backend.models import Workflow, WorkflowExecution
         data = request.get_json()
         workflow_ids = data.get('workflows', [])
         
         if not workflow_ids:
             return jsonify({'error': '没有选择要删除的工作流'}), 400
+        
+        print(f"[批量删除工作流] 收到删除请求，工作流IDs: {workflow_ids}")
         
         deleted_count = 0
         failed = []
@@ -1156,9 +1309,21 @@ def batch_delete_workflows():
         for workflow_id in workflow_ids:
             try:
                 with db.session_scope() as db_session:
-                    db.delete_workflow(db_session, workflow_id)
-                    deleted_count += 1
+                    workflow = db_session.query(Workflow).filter_by(id=workflow_id).first()
+                    if workflow:
+                        # 🔥 先删除执行记录
+                        executions = db_session.query(WorkflowExecution).filter_by(workflow_id=workflow_id).all()
+                        for execution in executions:
+                            db_session.delete(execution)
+                        
+                        # 再删除工作流
+                        db_session.delete(workflow)
+                        deleted_count += 1
+                        print(f"[批量删除工作流] ✅ 成功删除 #{workflow_id}")
+                    else:
+                        failed.append({'id': workflow_id, 'error': '工作流不存在'})
             except Exception as e:
+                print(f"[批量删除工作流] ❌ 删除 #{workflow_id} 失败: {e}")
                 failed.append({'id': workflow_id, 'error': str(e)})
         
         return jsonify({
@@ -1168,5 +1333,521 @@ def batch_delete_workflows():
             'failed': failed
         }), 200
     except Exception as e:
+        print(f"[批量删除工作流] ❌ 批量操作失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# 工作流API发布接口
+# ============================================================================
+
+@api.route('/workflows/<int:workflow_id>/publish', methods=['POST'])
+def publish_workflow_api(workflow_id):
+    """为工作流生成API Key"""
+    try:
+        from backend.models import WorkflowAPIKey, Workflow
+        
+        data = request.get_json() or {}
+        key_name = data.get('name', 'Default API Key')
+        
+        # 生成唯一密钥
+        api_key = f"sk-{secrets.token_urlsafe(32)}"
+        
+        # 🔧 修复：在session内获取所有需要的数据
+        with db.session_scope() as db_session:
+            # 验证工作流存在
+            workflow = db_session.query(Workflow).filter_by(id=workflow_id).first()
+            if not workflow:
+                return jsonify({'error': '工作流不存在'}), 404
+            
+            # 在session内获取workflow name
+            workflow_name = workflow.name
+            
+            # 创建API Key记录
+            key_record = WorkflowAPIKey(
+                workflow_id=workflow_id,
+                api_key=api_key,
+                name=key_name,
+                is_active=True,
+                created_date=datetime.utcnow()
+            )
+            db_session.add(key_record)
+        
+        print(f"[API发布] 为工作流 #{workflow_id} 生成API Key: {api_key[:10]}...")
+        
+        return jsonify({
+            'success': True,
+            'api_key': api_key,
+            'endpoint': '/api/public/execute',
+            'workflow_id': workflow_id,
+            'workflow_name': workflow_name,
+            'examples': {
+                'curl': f'''curl -X POST {request.host_url}api/public/execute \\
+  -H "X-API-Key: {api_key}" \\
+  -H "Content-Type: application/json" \\
+  -d '{{"input_data": {{}}}}\'''',
+                'python': f'''import requests
+
+response = requests.post(
+    '{request.host_url}api/public/execute',
+    headers={{
+        'X-API-Key': '{api_key}',
+        'Content-Type': 'application/json'
+    }},
+    json={{'input_data': {{}}}}
+)
+
+result = response.json()
+print(result['output'])''',
+                'javascript': f'''fetch('{request.host_url}api/public/execute', {{
+    method: 'POST',
+    headers: {{
+        'X-API-Key': '{api_key}',
+        'Content-Type': 'application/json'
+    }},
+    body: JSON.stringify({{input_data: {{}}}})
+}})
+.then(res => res.json())
+.then(data => console.log(data.output));'''
+            }
+        }), 201
+    
+    except Exception as e:
+        print(f"[API发布] ❌ 发布失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@api.route('/workflows/<int:workflow_id>/api-keys', methods=['GET'])
+def get_workflow_api_keys(workflow_id):
+    """获取工作流的所有API Keys"""
+    try:
+        from backend.models import WorkflowAPIKey
+        
+        with db.session_scope() as db_session:
+            keys = db_session.query(WorkflowAPIKey).filter_by(workflow_id=workflow_id).all()
+            
+            return jsonify({
+                'success': True,
+                'keys': [{
+                    'id': k.id,
+                    'name': k.name,
+                    'api_key': k.api_key,
+                    'is_active': k.is_active,
+                    'calls_count': k.calls_count,
+                    'last_used': k.last_used.isoformat() if k.last_used else None,
+                    'created_date': k.created_date.isoformat() if k.created_date else None
+                } for k in keys]
+            }), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@api.route('/workflows/api-keys/<int:key_id>', methods=['DELETE'])
+def delete_api_key(key_id):
+    """删除API Key"""
+    try:
+        from backend.models import WorkflowAPIKey
+        
+        with db.session_scope() as db_session:
+            key = db_session.query(WorkflowAPIKey).filter_by(id=key_id).first()
+            if not key:
+                return jsonify({'error': 'API Key不存在'}), 404
+            
+            db_session.delete(key)
+        
+        return jsonify({'success': True, 'message': 'API Key已删除'}), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@api.route('/public/execute', methods=['POST'])
+def public_execute_workflow():
+    """🔌 公开API接口 - 通过API Key执行工作流"""
+    try:
+        from backend.models import WorkflowAPIKey
+        
+        # 1. 验证API Key
+        api_key = request.headers.get('X-API-Key')
+        if not api_key:
+            return jsonify({
+                'success': False,
+                'error': 'Missing API Key',
+                'message': '请在请求头中提供 X-API-Key'
+            }), 401
+        
+        with db.session_scope() as db_session:
+            key_record = db_session.query(WorkflowAPIKey).filter_by(
+                api_key=api_key,
+                is_active=True
+            ).first()
+            
+            if not key_record:
+                return jsonify({
+                    'success': False,
+                    'error': 'Invalid API Key',
+                    'message': 'API Key无效或已被禁用'
+                }), 401
+            
+            workflow_id = key_record.workflow_id
+            
+            # 更新调用次数和最后使用时间
+            key_record.calls_count += 1
+            key_record.last_used = datetime.utcnow()
+            db_session.commit()
+        
+        # 2. 获取输入数据
+        input_data = request.get_json() or {}
+        
+        print(f"\n{'='*60}")
+        print(f"[公开API] 收到请求")
+        print(f"{'='*60}")
+        print(f"API Key: {api_key[:10]}...")
+        print(f"Workflow ID: {workflow_id}")
+        print(f"Input Data: {input_data}")
+        
+        # 3. 执行工作流
+        start_time = datetime.utcnow()
+        result = engine.execute_workflow(workflow_id, input_data)
+        execution_time = (datetime.utcnow() - start_time).total_seconds()
+        
+        # 4. 返回结果
+        return jsonify({
+            'success': result.get('success', False),
+            'execution_id': result.get('execution_id'),
+            'output': result.get('output'),
+            'execution_time': execution_time,
+            'error': result.get('error'),
+            'message': '执行成功' if result.get('success') else '执行失败'
+        }), 200 if result.get('success') else 500
+    
+    except Exception as e:
+        print(f"[公开API] ❌ 执行失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': '服务器错误'
+        }), 500
+
+# ============================================================================
+# Agent升级 API
+# ============================================================================
+
+@api.route('/agents/upgrade', methods=['POST'])
+def upgrade_agents_to_ai():
+    """升级Agent为AI驱动版本"""
+    try:
+        data = request.get_json() or {}
+        agent_names = data.get('agents', [])
+        
+        if not agent_names:
+            return jsonify({'success': False, 'error': '未指定要升级的Agent'}), 400
+        
+        print(f"\n[Agent升级] 收到升级请求，Agent列表: {agent_names}")
+        
+        # AI驱动的Agent代码
+        ai_agent_codes = {
+            '主题生成': '''def 主题生成(input_data: dict) -> dict:
+    """使用AI根据输入的主题和关键词生成多个创意主题"""
+    try:
+        topic = input_data.get('topic', '未知主题')
+        keywords = input_data.get('keywords', '')
+        target_audience = input_data.get('target_audience', '通用读者')
+        
+        try:
+            from backend.llm_service import get_llm_service
+            llm = get_llm_service()
+            
+            if llm.is_configured():
+                prompt = f"""请为"{topic}"相关主题生成5个吸引人的文章标题。
+
+要求：
+- 关键词：{keywords}
+- 目标读者：{target_audience}
+- 标题要有吸引力、专业性和可读性
+- 每个标题控制在20字以内
+
+只返回5个标题，每行一个，不要编号。"""
+
+                response = llm.chat([
+                    {'role': 'system', 'content': '你是一个专业的内容策划师，擅长创作吸引人的文章标题。'},
+                    {'role': 'user', 'content': prompt}
+                ], temperature=0.8)
+                
+                if response['success']:
+                    themes = [line.strip() for line in response['content'].strip().split('\\n') if line.strip()][:5]
+                    return {
+                        'success': True,
+                        'result': {
+                            'selected_theme': themes[0] if themes else f'{topic}的深度解析',
+                            'all_themes': themes,
+                            'keyword': keywords,
+                            'target_audience': target_audience,
+                            'ai_generated': True
+                        }
+                    }
+        except Exception as e:
+            print(f"[主题生成] LLM调用失败: {e}")
+        
+        themes = [
+            f'{topic}全面解析：从{keywords}看行业趋势',
+            f'{topic}深度研究：{keywords}的创新实践',
+            f'{topic}权威指南：{keywords}专业解读'
+        ]
+        return {
+            'success': True,
+            'result': {
+                'selected_theme': themes[0],
+                'all_themes': themes,
+                'keyword': keywords,
+                'target_audience': target_audience
+            }
+        }
+    except Exception as e:
+        return {'success': False, 'error': str(e)}''',
+            
+            '大纲撰写': '''def 大纲撰写(input_data: dict) -> dict:
+    """使用AI根据主题生成详细的文章大纲"""
+    try:
+        if isinstance(input_data, dict) and 'result' in input_data:
+            theme_data = input_data['result']
+            selected_theme = theme_data.get('selected_theme', '默认主题')
+            keyword = theme_data.get('keyword', '')
+            target_audience = theme_data.get('target_audience', '通用读者')
+        else:
+            selected_theme = '默认主题'
+            keyword = ''
+            target_audience = '通用读者'
+        
+        try:
+            from backend.llm_service import get_llm_service
+            llm = get_llm_service()
+            
+            if llm.is_configured():
+                prompt = f"""请为文章《{selected_theme}》撰写详细的内容大纲。
+
+要求：
+- 主题关键词：{keyword}
+- 目标读者：{target_audience}
+- 包含：引言、3-5个核心章节、总结
+- 每个章节要有清晰的主题和内容要点
+
+请以JSON格式返回。"""
+
+                response = llm.chat([
+                    {'role': 'system', 'content': '你是一个专业的内容策划师。'},
+                    {'role': 'user', 'content': prompt}
+                ], temperature=0.7)
+                
+                if response['success']:
+                    import json, re
+                    content = response['content'].strip()
+                    json_match = re.search(r'\\{[\\s\\S]*\\}', content)
+                    if json_match:
+                        outline = json.loads(json_match.group())
+                        return {'success': True, 'result': outline}
+        except Exception as e:
+            print(f"[大纲撰写] LLM调用失败: {e}")
+        
+        outline = {
+            'title': selected_theme,
+            'introduction': f'本文将全面探讨{keyword}相关主题。',
+            'sections': [
+                {'title': f'{keyword}核心概念与定义', 'content': f'详细介绍{keyword}的基本概念'},
+                {'title': f'{keyword}现状与趋势', 'content': f'分析{keyword}当前发展状况'},
+                {'title': f'{keyword}实践应用', 'content': f'展示{keyword}应用案例'}
+            ],
+            'conclusion': f'总结{keyword}的核心价值。'
+        }
+        return {'success': True, 'result': outline}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}''',
+            
+            '内容创作': '''def 内容创作(input_data: dict) -> dict:
+    """使用AI根据大纲生成完整的高质量文章"""
+    try:
+        if isinstance(input_data, dict) and 'result' in input_data:
+            outline = input_data['result']
+        else:
+            return {'success': False, 'error': '无效的输入数据'}
+        
+        title = outline.get('title', '未命名')
+        introduction = outline.get('introduction', '')
+        sections = outline.get('sections', [])
+        conclusion = outline.get('conclusion', '')
+        
+        try:
+            from backend.llm_service import get_llm_service
+            llm = get_llm_service()
+            
+            if llm.is_configured():
+                outline_text = f"标题：{title}\\n引言：{introduction}\\n"
+                for i, sec in enumerate(sections, 1):
+                    outline_text += f"{i}. {sec.get('title', '')}：{sec.get('content', '')}\\n"
+                outline_text += f"总结：{conclusion}"
+                
+                prompt = f"""请根据以下大纲，撰写一篇完整的专业文章。
+
+大纲：
+{outline_text}
+
+要求：每个章节300-500字，使用Markdown格式，总字数2000-3000字。"""
+
+                response = llm.chat([
+                    {'role': 'system', 'content': '你是一个专业的内容创作者。'},
+                    {'role': 'user', 'content': prompt}
+                ], temperature=0.7, max_tokens=4000)
+                
+                if response['success']:
+                    content = response['content'].strip()
+                    return {
+                        'success': True,
+                        'result': {
+                            'article_title': title,
+                            'content': content,
+                            'word_count': len(content),
+                            'sections_count': len(sections),
+                            'ai_generated': True
+                        }
+                    }
+        except Exception as e:
+            print(f"[内容创作] LLM调用失败: {e}")
+        
+        content_parts = [f'# {title}', '', '## 引言', introduction, '']
+        for section in sections:
+            content_parts.append(f"## {section.get('title', '')}")
+            content_parts.append(f"{section.get('content', '')}。详细内容展开...")
+            content_parts.append('')
+        content_parts.extend(['## 总结', conclusion])
+        content = '\\n'.join(content_parts)
+        
+        return {
+            'success': True,
+            'result': {
+                'article_title': title,
+                'content': content,
+                'word_count': len(content),
+                'sections_count': len(sections)
+            }
+        }
+    except Exception as e:
+        return {'success': False, 'error': str(e)}''',
+            
+            'seo优化': '''def seo优化(input_data: dict) -> dict:
+    """使用AI对文章进行SEO优化"""
+    import random
+    try:
+        if isinstance(input_data, dict) and 'result' in input_data:
+            article = input_data['result']
+        else:
+            return {'success': False, 'error': '无效的输入数据'}
+        
+        title = article.get('article_title', '未命名')
+        content = article.get('content', '')
+        
+        try:
+            from backend.llm_service import get_llm_service
+            llm = get_llm_service()
+            
+            if llm.is_configured():
+                prompt = f"""请对文章进行SEO优化：标题《{title}》
+
+任务：
+1. 优化标题
+2. 生成meta描述
+3. 提取关键词
+4. SEO评分
+5. 优化建议
+
+请以JSON格式返回。"""
+
+                response = llm.chat([
+                    {'role': 'system', 'content': '你是SEO专家。'},
+                    {'role': 'user', 'content': prompt}
+                ], temperature=0.5)
+                
+                if response['success']:
+                    import json, re
+                    content_text = response['content'].strip()
+                    json_match = re.search(r'\\{[\\s\\S]*\\}', content_text)
+                    if json_match:
+                        seo_data = json.loads(json_match.group())
+                        seo_data['original_title'] = title
+                        seo_data['final_content'] = content
+                        return {'success': True, 'result': seo_data}
+        except Exception as e:
+            print(f"[SEO优化] LLM调用失败: {e}")
+        
+        return {
+            'success': True,
+            'result': {
+                'original_title': title,
+                'optimized_title': f'{title} | 完整指南',
+                'meta_description': f'{title}完整解析',
+                'keywords': ['行业趋势', '分析', '案例'],
+                'seo_score': random.randint(75, 90),
+                'suggestions': ['增加内链', '优化图片', '提升速度'],
+                'final_content': content
+            }
+        }
+    except Exception as e:
+        return {'success': False, 'error': str(e)}'''
+        }
+        
+        # 执行升级
+        upgraded = []
+        failed = []
+        
+        with db.session_scope() as session:
+            for agent_name in agent_names:
+                if agent_name not in ai_agent_codes:
+                    failed.append({'name': agent_name, 'error': '不支持升级此Agent'})
+                    continue
+                
+                try:
+                    # 获取agent_id
+                    from backend.models import AIAgent, AgentVersion
+                    agent = session.query(AIAgent).filter_by(name=agent_name).first()
+                    
+                    if not agent:
+                        failed.append({'name': agent_name, 'error': 'Agent不存在'})
+                        continue
+                    
+                    # 更新活跃版本的代码
+                    active_version = session.query(AgentVersion).filter_by(
+                        agent_id=agent.id, 
+                        is_active=True
+                    ).first()
+                    
+                    if active_version:
+                        active_version.code = ai_agent_codes[agent_name]
+                        upgraded.append(agent_name)
+                        print(f"[Agent升级] ✅ {agent_name} 升级成功")
+                    else:
+                        failed.append({'name': agent_name, 'error': '未找到活跃版本'})
+                        
+                except Exception as e:
+                    print(f"[Agent升级] ❌ {agent_name} 升级失败: {e}")
+                    failed.append({'name': agent_name, 'error': str(e)})
+        
+        print(f"\n[Agent升级] 完成！成功: {len(upgraded)}, 失败: {len(failed)}")
+        
+        return jsonify({
+            'success': True,
+            'upgraded': upgraded,
+            'failed': failed,
+            'message': f'成功升级 {len(upgraded)} 个Agent'
+        }), 200
+        
+    except Exception as e:
+        print(f"[Agent升级] ❌ 处理失败: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 

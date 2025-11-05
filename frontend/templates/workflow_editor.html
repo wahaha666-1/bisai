@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作流可视化编辑器 - Dify风格</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f7fa;
+            overflow: hidden;
+        }
+
+        /* 顶部工具栏 */
+        .toolbar {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .toolbar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .toolbar-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        /* 左侧节点面板 */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 60px;
+            bottom: 0;
+            width: 260px;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .node-palette {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .palette-node {
+            padding: 12px;
+            background: #f9fafb;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            cursor: move;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .palette-node:hover {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .palette-node:active {
+            cursor: grabbing;
+        }
+
+        .node-icon {
+            font-size: 20px;
+        }
+
+        .node-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        /* 画布区域 */
+        .canvas-container {
+            position: fixed;
+            left: 260px;
+            top: 60px;
+            right: 0;
+            bottom: 0;
+            background: #f5f7fa;
+            overflow: hidden;
+        }
+
+        .canvas {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(#e5e7eb 1px, transparent 1px),
+                linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* 工作流节点 */
+        .workflow-node {
+            position: absolute;
+            min-width: 200px;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            cursor: move;
+            transition: box-shadow 0.2s;
+        }
+
+        .workflow-node:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+
+        .workflow-node.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .node-header {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: move;
+        }
+
+        .node-header.input {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .node-header.output {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .node-title {
+            font-size: 14px;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .node-body {
+            padding: 16px;
+        }
+
+        .node-field {
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .node-field:last-child {
+            margin-bottom: 0;
+        }
+
+        .field-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        /* 连接点 */
+        .connection-point {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #667eea;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: crosshair;
+            z-index: 10;
+        }
+
+        .connection-point:hover {
+            width: 16px;
+            height: 16px;
+            margin: -2px;
+        }
+
+        .connection-point.input {
+            left: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .connection-point.output {
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* SVG连线 */
+        .connections-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .connection-line {
+            stroke: #9ca3af;
+            stroke-width: 2;
+            fill: none;
+            pointer-events: stroke;
+            cursor: pointer;
+        }
+
+        .connection-line:hover {
+            stroke: #667eea;
+            stroke-width: 3;
+        }
+
+        .connection-arrow {
+            fill: #9ca3af;
+        }
+
+        /* 右键菜单 */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            padding: 4px;
+            display: none;
+            z-index: 1000;
+        }
+
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .context-menu-item:hover {
+            background: #f3f4f6;
+        }
+
+        .context-menu-item.danger {
+            color: #ef4444;
+        }
+
+        .context-menu-item.danger:hover {
+            background: #fee2e2;
+        }
+
+        /* 工具提示 */
+        .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #9ca3af;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state-text {
+            font-size: 16px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部工具栏 -->
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <div class="toolbar-title" id="workflow-title">新建工作流</div>
+        </div>
+        <div class="toolbar-buttons">
+            <button class="btn btn-secondary" onclick="undo()" id="undo-btn" disabled>↶ 撤销</button>
+            <button class="btn btn-secondary" onclick="redo()" id="redo-btn" disabled>↷ 重做</button>
+            <button class="btn btn-secondary" onclick="autoLayout()">🎯 自动布局</button>
+            <button class="btn btn-secondary" onclick="showTemplates()">📚 模板库</button>
+            <button class="btn btn-secondary" onclick="zoomIn()">🔍+ 放大</button>
+            <button class="btn btn-secondary" onclick="zoomOut()">🔍- 缩小</button>
+            <button class="btn btn-secondary" onclick="resetZoom()">↺ 重置</button>
+            <button class="btn btn-secondary" onclick="clearCanvas()">🗑️ 清空</button>
+            <button class="btn btn-secondary" onclick="loadWorkflow()">📂 加载</button>
+            <button class="btn btn-primary" onclick="saveWorkflow()">💾 保存</button>
+            <button class="btn btn-secondary" onclick="window.location.href='/'">← 返回</button>
+        </div>
+    </div>
+
+    <!-- 左侧节点面板 -->
+    <div class="sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-title">基础节点</div>
+            <div class="node-palette">
+                <div class="palette-node" draggable="true" data-node-type="input">
+                    <span class="node-icon">📥</span>
+                    <span class="node-label">输入节点</span>
+                </div>
+                <div class="palette-node" draggable="true" data-node-type="output">
+                    <span class="node-icon">📤</span>
+                    <span class="node-label">输出节点</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">智能体节点</div>
+            <div class="node-palette" id="agent-palette">
+                <!-- 动态加载Agent -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 画布区域 -->
+    <div class="canvas-container" id="canvas-container">
+        <!-- 🔧 SVG连线层移到canvas外面，避免transform影响 -->
+        <svg class="connections-svg" id="connections-svg" style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        ">
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                    <polygon points="0 0, 10 3, 0 6" class="connection-arrow" />
+                </marker>
+            </defs>
+        </svg>
+        
+        <div class="canvas" id="canvas">
+            <!-- 空状态提示 -->
+            <div class="empty-state" id="empty-state">
+                <div class="empty-state-icon">🎨</div>
+                <div class="empty-state-text">从左侧拖拽节点开始创建工作流</div>
+                <div style="margin-top: 24px; font-size: 13px; color: #6b7280; line-height: 1.8;">
+                    <strong>💡 画布操作提示：</strong><br>
+                    • <kbd style="background: #f3f4f6; padding: 2px 8px; border-radius: 4px; border: 1px solid #d1d5db;">空格</kbd> + 鼠标拖拽：移动画布<br>
+                    • 鼠标滚轮：缩放画布 (10%-300%)<br>
+                    • 鼠标中键拖拽：移动画布
+                </div>
+            </div>
+
+            <!-- 节点将动态添加到这里 -->
+        </div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <div class="context-menu" id="context-menu">
+        <div class="context-menu-item" onclick="openNodeEditor()">✏️ 编辑节点</div>
+        <div class="context-menu-item danger" onclick="deleteNode()">🗑️ 删除节点</div>
+    </div>
+
+    <!-- 🆕 右侧节点编辑面板 -->
+    <div id="node-editor-panel" style="
+        position: fixed;
+        right: -500px;
+        top: 60px;
+        bottom: 0;
+        width: 500px;
+        background: white;
+        box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+        transition: right 0.3s ease;
+        z-index: 1000;
+        overflow-y: auto;
+    ">
+        <div style="
+            position: sticky;
+            top: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        ">
+            <h3 style="margin: 0; font-size: 18px;">✏️ 编辑节点配置</h3>
+            <button onclick="closeNodeEditor()" style="
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                cursor: pointer;
+                font-size: 20px;
+            ">×</button>
+        </div>
+        
+        <div id="node-editor-content" style="padding: 24px;">
+            <!-- 动态加载编辑表单 -->
+        </div>
+        
+        <div style="
+            position: sticky;
+            bottom: 0;
+            padding: 16px 24px;
+            background: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 12px;
+        ">
+            <button onclick="saveNodeConfig()" style="
+                flex: 1;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+            ">💾 保存配置</button>
+            <button onclick="closeNodeEditor()" style="
+                background: #e5e7eb;
+                color: #374151;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 14px;
+                cursor: pointer;
+            ">取消</button>
+        </div>
+    </div>
+
+    <!-- 模板库模态框 -->
+    <div id="templates-modal" style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        z-index: 10000;
+        overflow-y: auto;
+    ">
+        <div style="
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 1200px;
+            margin: 40px auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        ">
+            <div style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 24px 32px;
+                border-radius: 16px 16px 0 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            ">
+                <h2 style="margin: 0; font-size: 24px;">📚 工作流模板库</h2>
+                <button onclick="document.getElementById('templates-modal').style.display='none'" style="
+                    background: rgba(255,255,255,0.2);
+                    border: none;
+                    color: white;
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    font-size: 20px;
+                ">×</button>
+            </div>
+            
+            <div style="padding: 32px;">
+                <div id="templates-grid" style="
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                    gap: 20px;
+                ">
+                    <!-- 模板将动态加载到这里 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入Dagre.js用于自动布局 -->
+    <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+    
+    <script src="/static/js/workflow-editor.js"></script>
+    <script src="/static/js/workflow-editor-advanced.js"></script>
+</body>
+</html>
+

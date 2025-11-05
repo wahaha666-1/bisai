@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社区广场 - AgentFlow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        /* 顶部导航栏 */
+        .navbar {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .nav-menu {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+        
+        .nav-item {
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .nav-item:hover {
+            background: #f5f5f5;
+            color: #667eea;
+        }
+        
+        .nav-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        /* 主容器 */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 32px;
+        }
+        
+        /* 头部 */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 36px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header-subtitle {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 24px;
+        }
+        
+        .update-time {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #f5f5f5;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #999;
+        }
+        
+        /* 分类标签 */
+        .category-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+        
+        .category-tab {
+            padding: 12px 24px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            color: #666;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        .category-tab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
+        
+        .category-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: white;
+        }
+        
+        /* 区域 */
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 32px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        /* 网格 */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+        
+        /* Agent卡片 */
+        .agent-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            border: 2px solid #f0f0f0;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .agent-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+            transform: translateY(-4px);
+        }
+        
+        .hot-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .new-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .source-badge {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            background: #f5f5f5;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .source-badge.external {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            color: white;
+            border: none;
+        }
+        
+        .source-badge.local {
+            background: #667eea;
+            color: white;
+            border: none;
+        }
+        
+        .agent-header {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .agent-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+        
+        .agent-info {
+            flex: 1;
+        }
+        
+        .agent-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #333;
+        }
+        
+        .agent-author {
+            font-size: 13px;
+            color: #999;
+        }
+        
+        .agent-desc {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        
+        .agent-stats {
+            display: flex;
+            gap: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #f0f0f0;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #999;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        /* 工作流卡片 */
+        .workflow-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            border: 2px solid #f0f0f0;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .workflow-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px 16px 0 0;
+        }
+        
+        .workflow-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+            transform: translateY(-4px);
+        }
+        
+        .workflow-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .workflow-desc {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+        
+        .workflow-agents {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        
+        .agent-tag {
+            padding: 4px 12px;
+            background: #f5f5f5;
+            border-radius: 12px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        /* 按钮 */
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* 详情模态框 */
+        .detail-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s;
+        }
+        
+        .detail-modal.active {
+            display: flex;
+        }
+        
+        .detail-content {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .detail-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .detail-icon {
+            font-size: 48px;
+        }
+        
+        .detail-title {
+            flex: 1;
+        }
+        
+        .detail-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .detail-author {
+            font-size: 14px;
+            color: #999;
+        }
+        
+        .detail-section {
+            margin-bottom: 20px;
+        }
+        
+        .detail-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .detail-section-content {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #666;
+        }
+        
+        .detail-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .detail-stat-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .detail-stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        
+        .detail-stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .detail-agents-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .detail-agent-tag {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .detail-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+        
+        .btn-action {
+            flex: 1;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary-action {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary-action {
+            background: #f0f0f0;
+            color: #666;
+        }
+        
+        .btn-secondary-action:hover {
+            background: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="logo">
+            <span>🤖</span>
+            <span>AgentFlow</span>
+        </div>
+        <div class="nav-menu">
+            <div class="nav-item" onclick="window.location.href='/'">工作台</div>
+            <div class="nav-item" onclick="window.location.href='/chat'">AI助手</div>
+            <div class="nav-item active">社区广场</div>
+            <div class="nav-item" onclick="window.location.href='/workflow-editor'">可视化编辑</div>
+        </div>
+    </nav>
+
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>🌟 社区广场</h1>
+            <p class="header-subtitle">发现优质Agent和工作流，每周精选更新</p>
+            <div class="update-time">
+                <span>📅</span>
+                <span>本周更新时间：2025年11月3日</span>
+            </div>
+        </div>
+
+        <!-- 分类标签 -->
+        <div class="category-tabs">
+            <div class="category-tab active" onclick="filterCategory('all')">🔥 全部</div>
+            <div class="category-tab" onclick="filterCategory('hot')">🏆 本周热门</div>
+            <div class="category-tab" onclick="filterCategory('new')">✨ 最新发布</div>
+            <div class="category-tab" onclick="filterCategory('workflow')">🔄 工作流</div>
+            <div class="category-tab" onclick="filterCategory('agent')">🤖 Agent</div>
+        </div>
+
+        <!-- 本周热门Agent -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span>🔥</span>
+                    <span>本周热门 Agent</span>
+                </div>
+            </div>
+            
+            <div class="grid" id="agents-grid">
+                <!-- 动态加载中 -->
+                <div class="empty-state">
+                    <div class="empty-state-icon">⏳</div>
+                    <div class="empty-state-text">加载中...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 精选工作流 -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span>⭐</span>
+                    <span>精选工作流</span>
+                </div>
+            </div>
+            
+            <div class="grid" id="workflows-grid">
+                <!-- 动态加载中 -->
+                <div class="empty-state">
+                    <div class="empty-state-icon">⏳</div>
+                    <div class="empty-state-text">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agent详情模态框 -->
+    <div class="detail-modal" id="agentDetailModal" onclick="closeDetailModal(event, 'agentDetailModal')">
+        <div class="detail-content" onclick="event.stopPropagation()">
+            <div class="detail-header">
+                <div class="detail-icon" id="agentDetailIcon">🤖</div>
+                <div class="detail-title">
+                    <div class="detail-name" id="agentDetailName">Agent名称</div>
+                    <div class="detail-author" id="agentDetailAuthor">by @用户</div>
+                </div>
+            </div>
+            
+            <div class="detail-stats" id="agentDetailStats">
+                <div class="detail-stat-item">
+                    <div class="detail-stat-label">评分</div>
+                    <div class="detail-stat-value">⭐ 4.8</div>
+                </div>
+                <div class="detail-stat-item">
+                    <div class="detail-stat-label">使用次数</div>
+                    <div class="detail-stat-value">1,234</div>
+                </div>
+                <div class="detail-stat-item">
+                    <div class="detail-stat-label">收藏</div>
+                    <div class="detail-stat-value">❤️ 567</div>
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <div class="detail-section-title">📝 描述</div>
+                <div class="detail-section-content" id="agentDetailDesc">Agent描述信息...</div>
+            </div>
+            
+            <div class="detail-actions">
+                <button class="btn-action btn-primary-action" id="agentCopyBtn" onclick="copyAgentToWorkspace()">
+                    📋 复制到工作台
+                </button>
+                <button class="btn-action btn-secondary-action" onclick="closeDetailModal(null, 'agentDetailModal')">
+                    ✖️ 关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定义确认/提示模态框 -->
+    <div class="detail-modal" id="customConfirmModal" style="z-index: 10001;">
+        <div class="detail-content" style="max-width: 600px;" onclick="event.stopPropagation()">
+            <div class="detail-header" style="border-bottom: 2px solid #667eea;">
+                <div class="detail-icon" id="confirmIcon">💡</div>
+                <div class="detail-title">
+                    <div class="detail-name" id="confirmTitle">提示</div>
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <div class="detail-section-content" id="confirmMessage" style="font-size: 15px; line-height: 1.8; white-space: pre-wrap;">
+                    消息内容...
+                </div>
+            </div>
+            
+            <div class="detail-actions" id="confirmActions">
+                <button class="btn-action btn-primary-action" id="confirmOkBtn">
+                    ✓ 确定
+                </button>
+                <button class="btn-action btn-secondary-action" id="confirmCancelBtn">
+                    ✖ 取消
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 工作流详情模态框 -->
+    <div class="detail-modal" id="workflowDetailModal" onclick="closeDetailModal(event, 'workflowDetailModal')">
+        <div class="detail-content" onclick="event.stopPropagation()">
+            <div class="detail-header">
+                <div class="detail-icon">🔄</div>
+                <div class="detail-title">
+                    <div class="detail-name" id="workflowDetailName">工作流名称</div>
+                </div>
+            </div>
+            
+            <div class="detail-stats" id="workflowDetailStats">
+                <div class="detail-stat-item">
+                    <div class="detail-stat-label">执行次数</div>
+                    <div class="detail-stat-value">⚡ 234</div>
+                </div>
+                <div class="detail-stat-item">
+                    <div class="detail-stat-label">成功率</div>
+                    <div class="detail-stat-value">✅ 96%</div>
+                </div>
+                <div class="detail-stat-item">
+                    <div class="detail-stat-label">收藏</div>
+                    <div class="detail-stat-value">❤️ 123</div>
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <div class="detail-section-title">📝 描述</div>
+                <div class="detail-section-content" id="workflowDetailDesc">工作流描述信息...</div>
+            </div>
+            
+            <div class="detail-section">
+                <div class="detail-section-title">🤖 包含的Agent</div>
+                <div class="detail-agents-list" id="workflowDetailAgents">
+                    <div class="detail-agent-tag">Agent 1</div>
+                    <div class="detail-agent-tag">Agent 2</div>
+                </div>
+            </div>
+            
+            <!-- 工作流可视化 -->
+            <div class="detail-section" id="workflowVisualizationSection">
+                <div class="detail-section-title">📊 工作流可视化</div>
+                <div id="workflowVisualization" style="background: #f8f9fa; padding: 20px; border-radius: 8px; min-height: 200px;">
+                    <!-- 流程图将在这里显示 -->
+                </div>
+            </div>
+            
+            <div class="detail-actions">
+                <button class="btn-action btn-primary-action" id="workflowExecuteBtn" onclick="executeWorkflowFromModal()">
+                    ⚡ 立即执行
+                </button>
+                <button class="btn-action btn-secondary-action" id="workflowCopyBtn" onclick="copyWorkflowAsTemplate()" style="display: none;">
+                    📋 复制为模板
+                </button>
+                <button class="btn-action btn-secondary-action" onclick="closeDetailModal(null, 'workflowDetailModal')">
+                    ✖️ 关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allAgents = [];
+        let allWorkflows = [];
+        let currentCategory = 'all';
+        let currentAgentId = null;
+        let currentWorkflowId = null;
+        let currentWorkflowName = null;
+        
+        // 自定义确认框
+        function showCustomConfirm(options) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('customConfirmModal');
+                const icon = document.getElementById('confirmIcon');
+                const title = document.getElementById('confirmTitle');
+                const message = document.getElementById('confirmMessage');
+                const okBtn = document.getElementById('confirmOkBtn');
+                const cancelBtn = document.getElementById('confirmCancelBtn');
+                
+                // 设置内容
+                icon.textContent = options.icon || '💡';
+                title.textContent = options.title || '提示';
+                message.textContent = options.message || '';
+                okBtn.textContent = options.okText || '✓ 确定';
+                cancelBtn.textContent = options.cancelText || '✖ 取消';
+                
+                // 如果只是提示（没有取消按钮）
+                if (options.type === 'alert') {
+                    cancelBtn.style.display = 'none';
+                } else {
+                    cancelBtn.style.display = 'block';
+                }
+                
+                // 事件处理
+                const handleOk = () => {
+                    modal.classList.remove('active');
+                    okBtn.removeEventListener('click', handleOk);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                    resolve(true);
+                };
+                
+                const handleCancel = () => {
+                    modal.classList.remove('active');
+                    okBtn.removeEventListener('click', handleOk);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                    resolve(false);
+                };
+                
+                okBtn.addEventListener('click', handleOk);
+                cancelBtn.addEventListener('click', handleCancel);
+                
+                // 显示模态框
+                modal.classList.add('active');
+            });
+        }
+        
+        // 简化的提示函数
+        async function customAlert(message, title = '提示', icon = '💡') {
+            return await showCustomConfirm({
+                type: 'alert',
+                icon: icon,
+                title: title,
+                message: message,
+                okText: '✓ 知道了'
+            });
+        }
+        
+        // 简化的确认函数
+        async function customConfirm(message, title = '确认', icon = '❓') {
+            return await showCustomConfirm({
+                type: 'confirm',
+                icon: icon,
+                title: title,
+                message: message,
+                okText: '✓ 确定',
+                cancelText: '✖ 取消'
+            });
+        }
+
+        // 页面加载时从数据库获取真实数据
+        async function loadCommunityData() {
+            console.log('[社区广场] 开始加载数据...');
+            
+            try {
+                // 使用新的组合API（本地+外部）
+                console.log('[社区广场] 正在获取数据（本地+外部）...');
+                const response = await fetch('/api/community/data?include_external=true&use_mock=true');
+                const combinedData = await response.json();
+                
+                console.log('[社区广场] 获取到数据:', combinedData);
+                
+                // 提取本地和外部数据
+                const localAgents = combinedData.local?.agents || [];
+                const localWorkflows = combinedData.local?.workflows || [];
+                const externalAgents = combinedData.external?.agents || [];
+                const externalWorkflows = combinedData.external?.workflows || [];
+                
+                console.log('[社区广场] 本地Agents:', localAgents.length, '个');
+                console.log('[社区广场] 外部Agents:', externalAgents.length, '个');
+                console.log('[社区广场] 本地工作流:', localWorkflows.length, '个');
+                console.log('[社区广场] 外部工作流:', externalWorkflows.length, '个');
+                
+                // 转换为社区展示格式
+                console.log('[社区广场] 开始转换数据格式...');
+                
+                // 处理本地Agents
+                const localAgentsMapped = localAgents.map(agent => ({
+                    id: agent.id,
+                    name: agent.name,
+                    icon: agent.icon || '🤖',
+                    author: 'AgentFlow用户',
+                    description: agent.description || '暂无描述',
+                    rating: 4.5 + Math.random() * 0.4,
+                    usageCount: agent.total_executions || 0,
+                    likeCount: Math.floor((agent.total_executions || 0) * 0.3),
+                    isHot: (agent.total_executions || 0) > 10,
+                    isNew: isNewAgent(agent.created_date),
+                    source: '本地',
+                    isExternal: false,
+                    type: 'agent'
+                }));
+                
+                // 处理外部Agents（已经是正确格式）
+                const externalAgentsMapped = externalAgents.map(agent => ({
+                    ...agent,
+                    isExternal: true,
+                    source: agent.source || '外部'
+                }));
+                
+                // 合并Agents
+                allAgents = [...localAgentsMapped, ...externalAgentsMapped];
+                
+                // 处理本地工作流
+                const localWorkflowsMapped = localWorkflows.map(workflow => ({
+                    id: workflow.id,
+                    name: workflow.name,
+                    description: workflow.description || '暂无描述',
+                    agents: extractAgentNames(workflow.workflow_definition),
+                    executionCount: workflow.total_executions || 0,
+                    successRate: workflow.success_rate || 0,
+                    likeCount: Math.floor((workflow.total_executions || 0) * 0.4),
+                    isHot: (workflow.total_executions || 0) > 5,
+                    isNew: isNewWorkflow(workflow.created_at),
+                    source: '本地',
+                    isExternal: false,
+                    type: 'workflow'
+                }));
+                
+                // 处理外部工作流
+                const externalWorkflowsMapped = externalWorkflows.map(workflow => ({
+                    ...workflow,
+                    isExternal: true,
+                    source: workflow.source || '外部'
+                }));
+                
+                // 合并工作流
+                allWorkflows = [...localWorkflowsMapped, ...externalWorkflowsMapped];
+                
+                console.log('[社区广场] 转换完成，Agents:', allAgents.length, '个，工作流:', allWorkflows.length, '个');
+                
+                // 初次渲染
+                console.log('[社区广场] 开始渲染界面...');
+                renderCommunity();
+                console.log('[社区广场] ✅ 加载完成！');
+            } catch (error) {
+                console.error('[社区广场] ❌ 加载失败:', error);
+            }
+        }
+
+        // 判断是否是新Agent（7天内创建）
+        function isNewAgent(dateStr) {
+            if (!dateStr) return false;
+            const created = new Date(dateStr);
+            const now = new Date();
+            const diffDays = (now - created) / (1000 * 60 * 60 * 24);
+            return diffDays <= 7;
+        }
+
+        // 判断是否是新工作流
+        function isNewWorkflow(dateStr) {
+            if (!dateStr) return false;
+            const created = new Date(dateStr);
+            const now = new Date();
+            const diffDays = (now - created) / (1000 * 60 * 60 * 24);
+            return diffDays <= 7;
+        }
+
+        // 从工作流定义中提取Agent名称
+        function extractAgentNames(definition) {
+            if (!definition) return [];
+            try {
+                const def = typeof definition === 'string' ? JSON.parse(definition) : definition;
+                return def.agents || [];
+            } catch {
+                return [];
+            }
+        }
+
+        // 渲染社区内容
+        function renderCommunity() {
+            let displayAgents = [...allAgents];
+            let displayWorkflows = [...allWorkflows];
+            
+            // 根据分类筛选
+            if (currentCategory === 'hot') {
+                displayAgents = allAgents.filter(a => a.isHot);
+                displayWorkflows = allWorkflows.filter(w => w.isHot);
+            } else if (currentCategory === 'new') {
+                displayAgents = allAgents.filter(a => a.isNew);
+                displayWorkflows = allWorkflows.filter(w => w.isNew);
+            } else if (currentCategory === 'agent') {
+                displayWorkflows = [];
+            } else if (currentCategory === 'workflow') {
+                displayAgents = [];
+            }
+            
+            // 渲染Agents
+            renderAgents(displayAgents);
+            
+            // 渲染工作流
+            renderWorkflows(displayWorkflows);
+        }
+
+        // 渲染Agent卡片
+        function renderAgents(agents) {
+            console.log('[渲染] 渲染Agents:', agents.length, '个');
+            const agentSection = document.getElementById('agents-grid');
+            
+            if (!agentSection) {
+                console.error('[渲染] ❌ 找不到agents-grid元素！');
+                return;
+            }
+            
+            if (agents.length === 0) {
+                console.log('[渲染] 无Agent，显示空状态');
+                agentSection.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">暂无Agent</div></div>';
+                return;
+            }
+            
+            agentSection.innerHTML = agents.map(agent => `
+                <div class="agent-card" onclick="showAgentDetail('${agent.id}')">
+                    ${agent.isHot ? '<div class="hot-badge">🔥 热门</div>' : ''}
+                    ${agent.isNew ? '<div class="new-badge">✨ 新</div>' : ''}
+                    <div class="source-badge ${agent.isExternal ? 'external' : 'local'}">${agent.source || '本地'}</div>
+                    <div class="agent-header">
+                        <div class="agent-icon">${agent.icon}</div>
+                        <div class="agent-info">
+                            <div class="agent-name">${agent.name}</div>
+                            <div class="agent-author">by @${agent.author}</div>
+                        </div>
+                    </div>
+                    <div class="agent-desc">${agent.description}</div>
+                    <div class="agent-stats">
+                        <div class="stat-item">
+                            <span>⭐</span>
+                            <span class="stat-value">${agent.rating.toFixed(1)}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span>💬</span>
+                            <span class="stat-value">${agent.usageCount.toLocaleString()}</span>
+                            <span>使用</span>
+                        </div>
+                        <div class="stat-item">
+                            <span>❤️</span>
+                            <span class="stat-value">${agent.likeCount.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            console.log('[渲染] ✅ Agents渲染完成');
+        }
+
+        // 渲染工作流卡片
+        function renderWorkflows(workflows) {
+            console.log('[渲染] 渲染工作流:', workflows.length, '个');
+            const workflowSection = document.getElementById('workflows-grid');
+            
+            if (!workflowSection) {
+                console.error('[渲染] ❌ 找不到workflows-grid元素！');
+                return;
+            }
+            
+            if (workflows.length === 0) {
+                console.log('[渲染] 无工作流，显示空状态');
+                workflowSection.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔄</div><div class="empty-state-text">暂无工作流</div></div>';
+                return;
+            }
+            
+            workflowSection.innerHTML = workflows.map(workflow => `
+                <div class="workflow-card" onclick="showWorkflowDetail('${workflow.id}')">
+                    ${workflow.isHot ? '<div class="hot-badge">🔥 热门</div>' : ''}
+                    ${workflow.isNew ? '<div class="new-badge">✨ 新</div>' : ''}
+                    <div class="source-badge ${workflow.isExternal ? 'external' : 'local'}">${workflow.source || '本地'}</div>
+                    <div class="workflow-name">${workflow.name}</div>
+                    <div class="workflow-desc">${workflow.description}</div>
+                    <div class="workflow-agents">
+                        ${workflow.agents.slice(0, 4).map(agent => 
+                            `<div class="agent-tag">${agent}</div>`
+                        ).join('')}
+                        ${workflow.agents.length > 4 ? `<div class="agent-tag">+${workflow.agents.length - 4}</div>` : ''}
+                    </div>
+                    <div class="agent-stats">
+                        <div class="stat-item">
+                            <span>⚡</span>
+                            <span class="stat-value">${workflow.executionCount.toLocaleString()}</span>
+                            <span>次执行</span>
+                        </div>
+                        <div class="stat-item">
+                            <span>✅</span>
+                            <span class="stat-value">${workflow.successRate.toFixed(1)}%</span>
+                            <span>成功率</span>
+                        </div>
+                        <div class="stat-item">
+                            <span>❤️</span>
+                            <span class="stat-value">${workflow.likeCount.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            console.log('[渲染] ✅ 工作流渲染完成');
+        }
+
+        // 分类筛选
+        function filterCategory(category) {
+            console.log('[筛选] 切换分类:', category);
+            currentCategory = category;
+            
+            // 更新标签状态
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // 重新渲染
+            console.log('[筛选] 重新渲染...');
+            renderCommunity();
+        }
+
+        // 显示Agent详情
+        function showAgentDetail(agentId) {
+            console.log('[点击] Agent ID:', agentId, 'Type:', typeof agentId);
+            // 支持数字和字符串ID
+            const agent = allAgents.find(a => String(a.id) === String(agentId));
+            if (!agent) {
+                console.error('[点击] 找不到Agent:', agentId);
+                console.log('[点击] 可用的Agents:', allAgents.map(a => ({id: a.id, name: a.name})));
+                return;
+            }
+            console.log('[点击] 显示Agent详情:', agent.name);
+            
+            // 保存当前Agent ID
+            currentAgentId = agentId;
+            
+            // 填充模态框数据
+            document.getElementById('agentDetailIcon').textContent = agent.icon;
+            document.getElementById('agentDetailName').textContent = agent.name;
+            document.getElementById('agentDetailAuthor').textContent = `by @${agent.author}`;
+            document.getElementById('agentDetailDesc').textContent = agent.description;
+            
+            // 更新统计数据
+            const statsHtml = `
+                <div class="detail-stat-item">
+                    <div class="detail-stat-label">评分</div>
+                    <div class="detail-stat-value">⭐ ${agent.rating.toFixed(1)}</div>
+                </div>
+                <div class="detail-stat-item">
+                    <div class="detail-stat-label">使用次数</div>
+                    <div class="detail-stat-value">${agent.usageCount.toLocaleString()}</div>
+                </div>
+                <div class="detail-stat-item">
+                    <div class="detail-stat-label">收藏</div>
+                    <div class="detail-stat-value">❤️ ${agent.likeCount.toLocaleString()}</div>
+                </div>
+            `;
+            document.getElementById('agentDetailStats').innerHTML = statsHtml;
+            
+            // 显示模态框
+            document.getElementById('agentDetailModal').classList.add('active');
+        }
+
+        // 显示工作流详情
+        function showWorkflowDetail(workflowId) {
+            console.log('[点击] 工作流 ID:', workflowId, 'Type:', typeof workflowId);
+            // 支持数字和字符串ID
+            const workflow = allWorkflows.find(w => String(w.id) === String(workflowId));
+            if (!workflow) {
+                console.error('[点击] 找不到工作流:', workflowId);
+                console.log('[点击] 可用的工作流:', allWorkflows.map(w => ({id: w.id, name: w.name})));
+                return;
+            }
+            console.log('[点击] 显示工作流详情:', workflow.name, '是否外部:', workflow.isExternal);
+            
+            // 保存当前工作流信息
+            currentWorkflowId = workflowId;
+            currentWorkflowName = workflow.name;
+            
+            // 填充模态框数据
+            document.getElementById('workflowDetailName').textContent = workflow.name;
+            document.getElementById('workflowDetailDesc').textContent = workflow.description;
+            
+            // 更新统计数据
+            const statsHtml = `
+                <div class="detail-stat-item">
+                    <div class="detail-stat-label">执行次数</div>
+                    <div class="detail-stat-value">⚡ ${workflow.executionCount.toLocaleString()}</div>
+                </div>
+                <div class="detail-stat-item">
+                    <div class="detail-stat-label">成功率</div>
+                    <div class="detail-stat-value">✅ ${workflow.successRate.toFixed(1)}%</div>
+                </div>
+                <div class="detail-stat-item">
+                    <div class="detail-stat-label">收藏</div>
+                    <div class="detail-stat-value">❤️ ${workflow.likeCount.toLocaleString()}</div>
+                </div>
+            `;
+            document.getElementById('workflowDetailStats').innerHTML = statsHtml;
+            
+            // 更新Agent列表
+            const agentsHtml = workflow.agents.map(agent => 
+                `<div class="detail-agent-tag">${agent}</div>`
+            ).join('');
+            document.getElementById('workflowDetailAgents').innerHTML = agentsHtml || '<div class="detail-section-content">暂无Agent信息</div>';
+            
+            // 生成工作流可视化
+            renderWorkflowVisualization(workflow);
+            
+            // 如果是外部工作流，显示"复制为模板"按钮
+            const copyBtn = document.getElementById('workflowCopyBtn');
+            const executeBtn = document.getElementById('workflowExecuteBtn');
+            if (workflow.isExternal) {
+                copyBtn.style.display = 'block';
+                executeBtn.textContent = '💡 查看详情';
+            } else {
+                copyBtn.style.display = 'none';
+                executeBtn.textContent = '⚡ 立即执行';
+            }
+            
+            // 显示模态框
+            document.getElementById('workflowDetailModal').classList.add('active');
+        }
+        
+        // 渲染工作流可视化
+        function renderWorkflowVisualization(workflow) {
+            const container = document.getElementById('workflowVisualization');
+            
+            // 创建简单的流程图
+            let html = '<div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px;">';
+            
+            // 输入节点
+            html += `
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 20px; border-radius: 8px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    📥 输入
+                </div>
+                <div style="font-size: 24px; color: #667eea;">→</div>
+            `;
+            
+            // Agent节点
+            workflow.agents.forEach((agent, index) => {
+                html += `
+                    <div style="background: white; border: 2px solid #667eea; color: #667eea; padding: 12px 20px; border-radius: 8px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        ${agent}
+                    </div>
+                `;
+                
+                if (index < workflow.agents.length - 1) {
+                    html += '<div style="font-size: 24px; color: #667eea;">→</div>';
+                }
+            });
+            
+            // 输出节点
+            html += `
+                <div style="font-size: 24px; color: #667eea;">→</div>
+                <div style="background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%); color: white; padding: 12px 20px; border-radius: 8px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    📤 输出
+                </div>
+            `;
+            
+            html += '</div>';
+            
+            // 添加说明
+            html += `
+                <div style="margin-top: 16px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #667eea;">
+                    <div style="font-size: 13px; color: #666; line-height: 1.6;">
+                        <strong style="color: #667eea;">流程说明：</strong><br>
+                        ${workflow.description || '此工作流按顺序执行上述Agent，每个Agent的输出将作为下一个Agent的输入。'}
+                    </div>
+                </div>
+            `;
+            
+            // 如果是外部工作流，添加提示
+            if (workflow.isExternal) {
+                html += `
+                    <div style="margin-top: 12px; padding: 12px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">
+                        <div style="font-size: 13px; color: #856404; line-height: 1.6;">
+                            <strong>💡 提示：</strong> 这是来自 <strong>${workflow.source}</strong> 的外部工作流。<br>
+                            您可以点击"📋 复制为模板"创建类似的工作流，或使用AI对话描述您的需求。
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        // 关闭模态框
+        function closeDetailModal(event, modalId) {
+            if (event) event.stopPropagation();
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // 复制Agent到工作台（从模态框调用）
+        async function copyAgentToWorkspace() {
+            console.log('[复制] 复制Agent ID:', currentAgentId);
+            
+            // 修复：使用字符串比较
+            const agent = allAgents.find(a => String(a.id) === String(currentAgentId));
+            if (!agent) {
+                console.error('[复制] 找不到Agent:', currentAgentId);
+                alert('❌ 找不到Agent信息');
+                closeDetailModal(null, 'agentDetailModal');
+                return;
+            }
+            
+            console.log('[复制] 找到Agent:', agent.name, '是否外部:', agent.isExternal);
+            
+            // 如果是外部Agent，显示提示并给出选项
+            if (agent.isExternal) {
+                closeDetailModal(null, 'agentDetailModal');
+                
+                // 构建详细的模板描述（包含代码模板）
+                const templateDesc = `请帮我创建一个Agent，类似于"${agent.name}"
+
+【Agent信息】
+名称：${agent.name}
+来源：${agent.source}
+图标：${agent.icon}
+
+【功能描述】
+${agent.description}
+
+【参考数据】
+• 使用次数：${agent.usageCount.toLocaleString()}次
+• 用户评分：${agent.rating.toFixed(1)}/5.0
+
+【要求】
+请生成完整的Python代码，包括：
+1. 函数定义（带类型注解）
+2. 完整的功能实现
+3. 错误处理
+4. 返回JSON格式的结果
+
+代码格式示例：
+\`\`\`python
+def ${agent.name.toLowerCase().replace(/\s+/g, '_')}_agent(参数1: str, 参数2: int) -> dict:
+    """
+    ${agent.description}
+    
+    Args:
+        参数1: 参数说明
+        参数2: 参数说明
+    
+    Returns:
+        dict: 包含结果的字典
+    """
+    try:
+        # 实现功能逻辑
+        result = {}
+        
+        return {
+            "status": "success",
+            "data": result
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+\`\`\`
+
+请根据上述描述生成完整代码。`;
+
+                const message = `📋 复制Agent模板
+
+Agent：${agent.icon} ${agent.name}
+来源：${agent.source}
+
+描述：${agent.description}
+
+我已为您准备好详细的AI创建提示词，点击【确定】将跳转到AI对话页面并自动填入。`;
+                
+                const choice = await customConfirm(message, '外部Agent模板复制', agent.icon);
+                if (choice) {
+                    // 跳转到对话创建页面，带上详细的模板描述
+                    const encodedDesc = encodeURIComponent(templateDesc);
+                    window.location.href = `/chat?message=${encodedDesc}`;
+                }
+                return;
+            }
+            
+            // 如果是本地Agent，尝试真正复制
+            try {
+                console.log('[复制] 正在复制本地Agent...');
+                
+                // 获取Agent完整信息
+                const response = await fetch(`/api/agents/${agent.id}`);
+                if (!response.ok) {
+                    throw new Error('获取Agent信息失败');
+                }
+                const agentData = await response.json();
+                console.log('[复制] 获取到完整Agent数据:', agentData);
+                
+                closeDetailModal(null, 'agentDetailModal');
+                
+                // 创建新的Agent（添加"_副本"后缀）
+                const newAgentData = {
+                    name: agentData.name + '_副本',
+                    agent_type: agentData.agent_type || 'other',
+                    description: agentData.description + '（从社区复制）',
+                    code: agentData.code,
+                    icon: agentData.icon
+                };
+                
+                console.log('[复制] 准备创建新Agent:', newAgentData.name);
+                
+                const createResponse = await fetch('/api/agents', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newAgentData)
+                });
+                
+                if (!createResponse.ok) {
+                    const error = await createResponse.json();
+                    throw new Error(error.error || '创建失败');
+                }
+                
+                const result = await createResponse.json();
+                console.log('[复制] ✅ 复制成功:', result);
+                
+                closeDetailModal(null, 'agentDetailModal');
+                
+                const message = `✅ 复制成功！
+
+已创建新Agent：${newAgentData.name}
+
+您可以：
+• 在工作台查看和编辑
+• 用于工作流中
+• 继续优化代码
+
+是否前往工作台查看？`;
+                
+                const goToWorkspace = await customConfirm(message, '复制成功', '✅');
+                
+                if (goToWorkspace) {
+                    window.location.href = '/workspace-old';
+                }
+                
+            } catch (error) {
+                console.error('[复制] ❌ 复制失败:', error);
+                await customAlert(`❌ 复制失败：${error.message}\n\n请稍后重试或手动创建`, '复制失败', '❌');
+                closeDetailModal(null, 'agentDetailModal');
+            }
+        }
+
+        // 从模态框执行工作流
+        async function executeWorkflowFromModal() {
+            console.log('[执行] 工作流 ID:', currentWorkflowId, 'Name:', currentWorkflowName);
+            
+            // 查找工作流
+            const workflow = allWorkflows.find(w => String(w.id) === String(currentWorkflowId));
+            
+            if (workflow && workflow.isExternal) {
+                // 外部工作流，显示详细信息
+                const message = `💡 工作流详情
+
+名称：${workflow.name}
+来源：${workflow.source}
+
+包含的Agent：
+${workflow.agents.map((a, i) => `${i + 1}. ${a}`).join('\n')}
+
+流程：输入 → ${workflow.agents.join(' → ')} → 输出
+
+功能：${workflow.description}
+
+统计：
+• 执行 ${workflow.executionCount.toLocaleString()}次
+• 成功率 ${workflow.successRate.toFixed(1)}%
+• 收藏 ${workflow.likeCount.toLocaleString()}
+
+可点击"复制为模板"创建类似工作流。`;
+                
+                await customAlert(message, '外部工作流详情', '💡');
+                return;
+            }
+            
+            closeDetailModal(null, 'workflowDetailModal');
+            
+            // 本地工作流，直接调用现有的执行函数
+            executeWorkflow(currentWorkflowId, currentWorkflowName);
+        }
+        
+        // 复制工作流为模板
+        async function copyWorkflowAsTemplate() {
+            console.log('[复制模板] 工作流 ID:', currentWorkflowId);
+            
+            const workflow = allWorkflows.find(w => String(w.id) === String(currentWorkflowId));
+            if (!workflow) {
+                await customAlert('❌ 找不到工作流信息', '错误', '❌');
+                return;
+            }
+            
+            console.log('[复制模板] 工作流:', workflow.name, '来源:', workflow.source);
+            
+            closeDetailModal(null, 'workflowDetailModal');
+            
+            // 生成完整的工作流JSON模板
+            const workflowTemplate = {
+                name: workflow.name + "_模板",
+                description: workflow.description,
+                workflow_definition: {
+                    agents: workflow.agents.map((agentName, index) => ({
+                        name: agentName.toLowerCase().replace(/\s+/g, '_'),
+                        description: `${agentName}功能实现`,
+                        code: `def ${agentName.toLowerCase().replace(/\s+/g, '_')}(input_data: dict) -> dict:
+    """${agentName}"""
+    # TODO: 实现具体逻辑
+    return {"result": "待实现", "agent": "${agentName}"}`
+                    })),
+                    sequence: workflow.agents.map((agentName, index) => ({
+                        agent: agentName.toLowerCase().replace(/\s+/g, '_'),
+                        input_mapping: index === 0 ? {"input_data": "$.input"} : {"input_data": `$.${workflow.agents[index-1].toLowerCase().replace(/\s+/g, '_')}`},
+                        output_key: agentName.toLowerCase().replace(/\s+/g, '_')
+                    }))
+                }
+            };
+            
+            // 构建详细的AI创建提示词
+            const templateDesc = `请帮我创建一个工作流，类似于"${workflow.name}"
+
+【工作流信息】
+名称：${workflow.name}
+来源：${workflow.source}
+
+【功能描述】
+${workflow.description}
+
+【流程结构】
+输入 → ${workflow.agents.join(' → ')} → 输出
+
+【包含的Agent】
+${workflow.agents.map((agent, i) => `${i + 1}. ${agent}`).join('\n')}
+
+【完整的JSON模板】
+\`\`\`json
+${JSON.stringify(workflowTemplate, null, 2)}
+\`\`\`
+
+【要求】
+请为每个Agent生成完整的Python代码：
+${workflow.agents.map((agent, i) => `
+${i + 1}. ${agent}
+   - 函数名：${agent.toLowerCase().replace(/\s+/g, '_')}
+   - 参数：input_data (dict类型)
+   - 返回：dict类型的结果
+   - 功能：${agent}的具体实现`).join('\n')}
+
+请生成：
+1. 每个Agent的完整代码（带注释）
+2. 完整的workflow_definition JSON
+3. 可以直接使用的工作流配置`;
+
+            const message = `📋 复制工作流模板
+
+工作流：${workflow.name}
+来源：${workflow.source}
+
+流程：输入 → ${workflow.agents.join(' → ')} → 输出
+
+我已为您准备好完整的模板（包含${workflow.agents.length}个Agent的结构和代码框架）。
+
+选择创建方式：
+【确定】AI对话创建（推荐）
+【取消】可视化编辑器`;
+            
+            const choice = await customConfirm(message, '工作流模板复制', '📋');
+            
+            if (choice) {
+                // 跳转到AI对话创建，并带上模板描述
+                const encodedDesc = encodeURIComponent(templateDesc);
+                window.location.href = `/chat?message=${encodedDesc}`;
+            } else {
+                // 先显示提示，然后跳转
+                await customAlert(`即将前往可视化编辑器
+
+参考流程：${workflow.agents.join(' → ')}
+
+提示：需要先创建${workflow.agents.length}个Agent，然后拖拽连接。`, '可视化编辑器', '💡');
+                
+                window.location.href = '/workflow-editor';
+            }
+        }
+
+        // 执行工作流
+        async function executeWorkflow(id, name) {
+            // 智能参数模板
+            let paramTemplate = {};
+            if (name.includes('旅游') || name.includes('travel')) {
+                paramTemplate = {"destination": "北京", "days": 3, "budget": 5000};
+            } else if (name.includes('内容创作') || name.includes('全栈') || name.includes('文章') || name.includes('content')) {
+                paramTemplate = {"topic": "人工智能的未来发展趋势", "keywords": "AI, 机器学习", "target_audience": "技术爱好者"};
+            } else {
+                paramTemplate = {"input_data": "请输入内容"};
+            }
+            
+            // 显示自定义输入对话框
+            showCommunityWorkflowInputDialog(id, name, paramTemplate);
+        }
+        
+        // 显示工作流参数输入对话框
+        function showCommunityWorkflowInputDialog(workflowId, workflowName, paramTemplate) {
+            const oldDialog = document.getElementById('community-workflow-input-dialog');
+            if (oldDialog) oldDialog.remove();
+            
+            const modal = document.createElement('div');
+            modal.id = 'community-workflow-input-dialog';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+                display: flex; align-items: center; justify-content: center; z-index: 10000;
+            `;
+            modal.innerHTML = `
+                <div style="background: white; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+                    <h3 style="margin: 0 0 16px 0; color: #1f2937; font-size: 18px;">执行工作流：${workflowName}</h3>
+                    <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 14px;">请输入JSON格式的参数：</p>
+                    <textarea id="community-workflow-input-params" style="
+                        width: 100%; height: 120px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;
+                        font-family: 'Consolas', monospace; font-size: 13px; resize: vertical;
+                    ">${JSON.stringify(paramTemplate, null, 2)}</textarea>
+                    <div id="community-input-error-message" style="margin-top: 12px; padding: 12px; background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 4px; color: #dc2626; font-size: 13px; display: none;"></div>
+                    <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end;">
+                        <button onclick="document.getElementById('community-workflow-input-dialog').remove()" style="
+                            padding: 10px 20px; background: #f3f4f6; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;
+                        ">取消</button>
+                        <button onclick="executeCommunityWorkflowWithParams(${workflowId}, '${workflowName}')" style="
+                            padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;
+                        ">确定</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.getElementById('community-workflow-input-params').focus();
+        }
+        
+        // 执行工作流（带参数）
+        async function executeCommunityWorkflowWithParams(workflowId, workflowName) {
+            const inputTextarea = document.getElementById('community-workflow-input-params');
+            const errorDiv = document.getElementById('community-input-error-message');
+            const inputParamsStr = inputTextarea.value;
+            
+            let params = {};
+            try {
+                params = JSON.parse(inputParamsStr);
+                errorDiv.style.display = 'none';
+            } catch (e) {
+                errorDiv.textContent = '❌ JSON 格式错误：' + e.message;
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            // 关闭对话框
+            document.getElementById('community-workflow-input-dialog').remove();
+            showCommunityToast('⏳ 执行中...', 'info');
+            
+            try {
+                const response = await fetch(`/api/workflows/${workflowId}/execute`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(params)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showCommunityToast('✅ 执行成功！前往工作台查看详情', 'success');
+                    setTimeout(() => {
+                        window.open('/workspace', '_blank');
+                    }, 1500);
+                } else {
+                    showCommunityToast('❌ 执行失败：' + result.error, 'error');
+                }
+            } catch (error) {
+                showCommunityToast('❌ 错误：' + error.message, 'error');
+            }
+        }
+        
+        // Toast通知
+        function showCommunityToast(message, type = 'info') {
+            const colors = {
+                success: '#10b981',
+                error: '#ef4444',
+                info: '#3b82f6'
+            };
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed; top: 20px; right: 20px; padding: 16px 24px;
+                background: ${colors[type]}; color: white; border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; max-width: 400px;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // 页面加载时初始化
+        window.addEventListener('DOMContentLoaded', loadCommunityData);
+    </script>
+</body>
+</html>
+

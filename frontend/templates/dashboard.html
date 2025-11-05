@@ -177,7 +177,7 @@
                 document.getElementById('total-executions').textContent = totalExec;
                 
                 let avgSuccess = workflows.length > 0 
-                    ? workflows.reduce((sum, w) => sum + (w.success_rate || 0), 0) / workflows.length * 100
+                    ? workflows.reduce((sum, w) => sum + (w.success_rate || 0), 0) / workflows.length
                     : 0;
                 document.getElementById('avg-success-rate').textContent = avgSuccess.toFixed(1) + '%';
                 
@@ -382,7 +382,7 @@
             };
             
             agents.forEach(agent => {
-                const rate = (agent.success_rate || 0) * 100;
+                const rate = agent.success_rate || 0;
                 if (rate >= 90) ranges['90-100%']++;
                 else if (rate >= 70) ranges['70-90%']++;
                 else if (rate >= 50) ranges['50-70%']++;

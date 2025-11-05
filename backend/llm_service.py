@@ -67,7 +67,7 @@ class DeepSeekLLM:
         self,
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
-        max_tokens: int = 2000,
+        max_tokens: int = 8000,
         stream: bool = False,
         tools: Optional[List[Dict]] = None,
         tool_choice: str = "auto"
@@ -91,6 +91,14 @@ class DeepSeekLLM:
             }
         
         try:
+            print(f"[LLM] 准备调用DeepSeek API...")
+            print(f"[LLM] 模型: {self.model}, 温度: {temperature}, 最大tokens: {max_tokens}")
+            print(f"[LLM] 消息数: {len(messages)}")
+            
+            # 隐藏API Key用于日志显示
+            masked_key = f'{self.api_key[:10]}...{self.api_key[-4:]}' if len(self.api_key) > 14 else '***'
+            print(f"[LLM] API Key: {masked_key}")
+            
             headers = {
                 'Authorization': f'Bearer {self.api_key}',
                 'Content-Type': 'application/json'
@@ -109,6 +117,11 @@ class DeepSeekLLM:
                 data['tools'] = tools
                 data['tool_choice'] = tool_choice
             
+            print(f"[LLM] 发送请求到: {self.base_url}/chat/completions")
+            print(f"[LLM] 超时设置: 连接10秒, 读取60秒")
+            
+            request_start = time.time()
+            
             # 增加超时时间到60秒，并添加连接超时设置
             # 关键：如果是流式请求，requests也要设置stream=True
             response = requests.post(
@@ -118,6 +131,9 @@ class DeepSeekLLM:
                 stream=stream,  # 这个参数很关键！
                 timeout=(10, 60)  # (连接超时, 读取超时)
             )
+            
+            request_time = time.time() - request_start
+            print(f"[LLM] 收到响应，耗时: {request_time:.2f}s, 状态码: {response.status_code}")
             
             if response.status_code == 200:
                 # 流式输出
@@ -205,7 +221,7 @@ class DeepSeekLLM:
         self,
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
-        max_tokens: int = 2000
+        max_tokens: int = 8000
     ) -> Generator[str, None, None]:
         """
         流式聊天 - 逐字输出

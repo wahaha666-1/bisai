@@ -108,8 +108,8 @@ def log_request():
 
 @app.route('/')
 def index():
-    """公开主页 - 展示平台信息"""
-    return render_template('home.html')
+    """主工作台 - 现代化工作台"""
+    return render_template('workspace_new.html')
 
 @app.route('/workspace')
 def workspace():
@@ -187,6 +187,16 @@ def tools_page():
                          username=session.get('username'),
                          role=session.get('role'))
 
+@app.route('/workflow-editor')
+def workflow_editor():
+    """工作流可视化编辑器（Dify风格）"""
+    return render_template('workflow_editor.html')
+
+@app.route('/upgrade-agents')
+def upgrade_agents_page():
+    """Agent升级中心"""
+    return render_template('upgrade_agents.html')
+
 @app.route('/network-test')
 def network_test():
     """网络诊断工具"""
@@ -194,7 +204,12 @@ def network_test():
 
 @app.route('/dashboard')
 def dashboard():
-    """数据可视化看板"""
+    """🆕 社区广场 - 展示优质Agent和工作流（公开访问）"""
+    return render_template('community.html')
+
+@app.route('/dashboard-old')
+def dashboard_old():
+    """旧版数据看板（需要登录）"""
     if 'user_id' not in session:
         return redirect('/login')
     

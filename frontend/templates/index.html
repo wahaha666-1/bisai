@@ -161,7 +161,7 @@
                 <div class="header-right">
                     <a href="/chat" class="btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 15px;">💬 DeepSeek 对话</a>
                     <a href="/tools" class="btn" style="background: #ff9800; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 15px;">🛠️ 工具管理</a>
-                    <a href="/dashboard" class="btn" style="background: #28a745; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 15px;">📊 数据看板</a>
+                    <a href="/dashboard" class="btn" style="background: #28a745; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 15px;">🏘️ 社区广场</a>
                     {% if role == 'admin' %}
                     <a href="/admin" class="btn" style="background: #ff6b6b; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-right: 15px;">🔧 管理后台</a>
                     {% endif %}
@@ -206,7 +206,10 @@
         <div class="section">
             <div class="section-header">
                 <h2>🔄 工作流</h2>
-                <button class="btn-add" onclick="openCreateWorkflowModal()">➕ 创建工作流</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-add" onclick="window.open('/workflow-editor', '_blank')" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">🎨 可视化创建</button>
+                    <button class="btn-add" onclick="openCreateWorkflowModal()">➕ JSON创建</button>
+                </div>
             </div>
             <div class="workflow-list" id="workflow-list">
                 <p style="text-align: center; color: #999; padding: 40px;">⏳ 加载中...</p>
@@ -321,6 +324,242 @@
         // ============================================================================
         
         // 显示工作流执行结果的美观模态框
+        // 🆕 将JSON结果转换为自然语言
+        function generateNaturalLanguageSummary(result) {
+            if (!result.output || typeof result.output !== 'object') {
+                return '<div style="color: #6b7280;">暂无输出结果</div>';
+            }
+            
+            // 尝试智能解析不同类型的输出
+            const output = result.output;
+            let summary = '';
+            
+            // 检测是否是旅游规划类型
+            if (output.itinerary_agent_result || output.weather_info || output.attractions) {
+                summary = formatTravelPlan(output);
+            }
+            // 检测是否有多个agent结果
+            else if (Object.keys(output).some(k => k.endsWith('_result') || k.endsWith('_output'))) {
+                summary = formatMultiAgentResult(output);
+            }
+            // 通用格式化
+            else {
+                summary = formatGenericOutput(output);
+            }
+            
+            return summary;
+        }
+        
+        function formatTravelPlan(output) {
+            let html = '<div style="line-height: 1.8; color: #374151;">';
+            
+            // 天气信息
+            if (output.weather_info || output.weather_agent_result) {
+                const weather = output.weather_info || output.weather_agent_result;
+                const w = weather.result || weather.weather_info || weather;
+                
+                if (w && w.destination) {
+                    const condition = w.weather_condition || w.condition || '晴朗';
+                    const temp = w.temperature || '未知';
+                    const humidity = w.humidity || '未知';
+                    const suit = w.suitability || '适宜';
+                    
+                    html += `
+                        <div style="margin-bottom: 20px; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 18px;">☀️ 天气情况</h3>
+                            <p style="margin: 0; font-size: 15px;">
+                                <strong>${w.destination}</strong> 当前天气 <strong>${condition}</strong>，温度 <strong>${temp}</strong>，
+                                湿度 <strong>${humidity}</strong>，<strong>${suit}</strong>出游。
+                            </p>
+                        </div>
+                    `;
+                }
+            }
+            
+            // 景点推荐
+            if (output.attraction_agent_result || output.attractions) {
+                const attractions = output.attraction_agent_result || output.attractions;
+                const attrList = attractions?.recommended_attractions || attractions?.attractions || [];
+                
+                if (attrList && attrList.length > 0) {
+                    html += `
+                        <div style="margin-bottom: 20px; padding: 16px; background: #f0fdf4; border-radius: 12px; border-left: 4px solid #10b981;">
+                            <h3 style="margin: 0 0 12px 0; color: #047857; font-size: 18px;">🎯 推荐景点</h3>
+                            <ul style="margin: 0; padding-left: 20px; color: #065f46;">
+                                ${attrList.map((attr, index) => `
+                                    <li style="margin-bottom: 10px; line-height: 1.6;">
+                                        <strong style="color: #047857; font-size: 15px;">${attr.name || '景点' + (index+1)}</strong>
+                                        ${attr.rating ? `<span style="color: #fbbf24;"> ⭐${attr.rating}</span>` : ''}
+                                        ${attr.description ? `<br><span style="color: #059669; font-size: 14px;">${attr.description}</span>` : ''}
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+            }
+            
+            // 酒店推荐
+            if (output.hotel_agent_result || output.hotels) {
+                const hotels = output.hotel_agent_result || output.hotels;
+                const hotelList = hotels?.recommended_hotels || hotels?.hotels || [];
+                
+                if (hotelList && hotelList.length > 0) {
+                    html += `
+                        <div style="margin-bottom: 20px; padding: 16px; background: #fef3c7; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                            <h3 style="margin: 0 0 12px 0; color: #92400e; font-size: 18px;">🏨 推荐酒店</h3>
+                            <ul style="margin: 0; padding-left: 20px; color: #78350f;">
+                                ${hotelList.map((hotel, index) => `
+                                    <li style="margin-bottom: 10px; line-height: 1.6;">
+                                        <strong style="color: #92400e; font-size: 15px;">${hotel.name || '酒店' + (index+1)}</strong>
+                                        ${hotel.rating ? `<span style="color: #fbbf24;"> ⭐${hotel.rating}</span>` : ''}
+                                        ${hotel.price_range ? `<span style="color: #b45309;"> • ${hotel.price_range}</span>` : ''}
+                                        ${hotel.amenities && hotel.amenities.length > 0 ? `<br><span style="color: #a16207; font-size: 14px;">设施：${hotel.amenities.join(' • ')}</span>` : ''}
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+            }
+            
+            // 行程规划 - 增强版
+            if (output.itinerary_agent_result || output.itinerary) {
+                const itinerary = output.itinerary_agent_result || output.itinerary;
+                const itineraryText = itinerary?.itinerary || itinerary?.result || itinerary;
+                
+                if (itineraryText && typeof itineraryText === 'string') {
+                    // 尝试将文本分段处理，使其更易读
+                    const lines = itineraryText.split('\n').filter(line => line.trim());
+                    let formattedItinerary = '';
+                    
+                    lines.forEach((line, index) => {
+                        line = line.trim();
+                        // 检测是否是日期标题
+                        if (line.match(/第[一二三四五六七八九十\d]+天/) || line.match(/Day\s*\d+/i) || line.match(/^\d+\./)) {
+                            formattedItinerary += `
+                                <div style="
+                                    margin-top: ${index > 0 ? '20px' : '0'};
+                                    padding: 12px 16px;
+                                    background: white;
+                                    border-radius: 8px;
+                                    border-left: 4px solid #8b5cf6;
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                                ">
+                                    <div style="font-weight: 700; color: #6d28d9; font-size: 16px; margin-bottom: 8px;">
+                                        📆 ${line}
+                                    </div>
+                            `;
+                        } else if (line.match(/[：:]/)) {
+                            // 有冒号的行，可能是时间点或活动
+                            const [label, content] = line.split(/[：:]/);
+                            formattedItinerary += `
+                                <div style="margin-left: 16px; margin-bottom: 6px; color: #4c1d95;">
+                                    <span style="font-weight: 600; color: #7c3aed;">⏰ ${label}:</span>
+                                    <span>${content || ''}</span>
+                                </div>
+                            `;
+                        } else if (line.startsWith('-') || line.startsWith('•') || line.startsWith('*')) {
+                            // 列表项
+                            formattedItinerary += `
+                                <div style="margin-left: 16px; margin-bottom: 4px; color: #5b21b6;">
+                                    ${line.replace(/^[-•*]\s*/, '• ')}
+                                </div>
+                            `;
+                        } else if (line.length > 0) {
+                            // 普通文本
+                            formattedItinerary += `
+                                <div style="margin-left: 16px; margin-bottom: 6px; color: #4c1d95; line-height: 1.6;">
+                                    ${line}
+                                </div>
+                            `;
+                        }
+                        
+                        // 如果下一行是新的一天或结束，关闭div
+                        if (index === lines.length - 1 || 
+                            (index < lines.length - 1 && (
+                                lines[index + 1].match(/第[一二三四五六七八九十\d]+天/) || 
+                                lines[index + 1].match(/Day\s*\d+/i) ||
+                                lines[index + 1].match(/^\d+\./)
+                            ))) {
+                            formattedItinerary += `</div>`;
+                        }
+                    });
+                    
+                    html += `
+                        <div style="margin-bottom: 20px; padding: 20px; background: #ede9fe; border-radius: 12px; border-left: 4px solid #8b5cf6;">
+                            <h3 style="margin: 0 0 16px 0; color: #6d28d9; font-size: 18px; display: flex; align-items: center; gap: 8px;">
+                                <span>📅</span>
+                                <span>详细行程安排</span>
+                            </h3>
+                            ${formattedItinerary}
+                        </div>
+                    `;
+                } else if (typeof itineraryText === 'object') {
+                    // 如果是对象，格式化显示
+                    html += `
+                        <div style="margin-bottom: 20px; padding: 16px; background: #ede9fe; border-radius: 12px; border-left: 4px solid #8b5cf6;">
+                            <h3 style="margin: 0 0 12px 0; color: #6d28d9; font-size: 18px;">📅 行程安排</h3>
+                            <div style="font-size: 14px; line-height: 1.8; color: #4c1d95;">
+                                ${formatValue(itineraryText)}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function formatMultiAgentResult(output) {
+            let html = '<div style="line-height: 1.8; color: #374151;">';
+            
+            Object.keys(output).forEach((key, index) => {
+                const value = output[key];
+                const agentName = key.replace(/_result$/, '').replace(/_output$/, '').replace(/_/g, ' ');
+                
+                html += `
+                    <div style="margin-bottom: 16px; padding: 14px; background: ${index % 2 === 0 ? '#f9fafb' : '#f3f4f6'}; border-radius: 8px;">
+                        <div style="font-weight: 600; color: #111827; margin-bottom: 8px; text-transform: capitalize;">
+                            🤖 ${agentName}
+                        </div>
+                        <div style="color: #6b7280; font-size: 14px;">
+                            ${formatValue(value)}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function formatGenericOutput(output) {
+            return `
+                <div style="padding: 16px; background: #f9fafb; border-radius: 8px; line-height: 1.8; color: #374151;">
+                    ${formatValue(output)}
+                </div>
+            `;
+        }
+        
+        function formatValue(value) {
+            if (typeof value === 'string') {
+                return value;
+            } else if (typeof value === 'object' && value !== null) {
+                if (Array.isArray(value)) {
+                    return '<ul style="margin: 4px 0; padding-left: 20px;">' +
+                        value.map(item => `<li>${formatValue(item)}</li>`).join('') +
+                        '</ul>';
+                } else {
+                    return Object.keys(value).map(k => 
+                        `<div><strong>${k}:</strong> ${formatValue(value[k])}</div>`
+                    ).join('');
+                }
+            }
+            return String(value);
+        }
+        
         function showExecutionResult(result) {
             // 移除旧的模态框（如果存在）
             const oldModal = document.getElementById('execution-result-modal');
@@ -330,6 +569,115 @@
             const statusIcon = isSuccess ? '✅' : '❌';
             const statusColor = isSuccess ? '#10b981' : '#ef4444';
             const statusText = isSuccess ? '工作流执行成功！' : '工作流执行失败！';
+            
+            // 🆕 生成自然语言总结
+            const naturalLanguageSummary = isSuccess ? generateNaturalLanguageSummary(result) : '';
+            
+            // 🔥 解析执行过程（execution_graph）
+            let executionGraphHTML = '';
+            if (result.execution_graph && Array.isArray(result.execution_graph) && result.execution_graph.length > 0) {
+                executionGraphHTML = `
+                    <div style="margin-bottom: 24px;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 16px; font-size: 16px;">🔄 执行流程（Dify风格）</div>
+                        ${result.execution_graph.map((step, index) => {
+                            const stepStatus = step.status === 'completed' ? '✅' : '❌';
+                            const stepColor = step.status === 'completed' ? '#10b981' : '#ef4444';
+                            const stepBg = step.status === 'completed' ? '#f0fdf4' : '#fef2f2';
+                            const stepBorder = step.status === 'completed' ? '#86efac' : '#fca5a5';
+                            
+                            return `
+                                <div style="
+                                    background: ${stepBg};
+                                    border: 2px solid ${stepBorder};
+                                    border-radius: 12px;
+                                    padding: 16px;
+                                    margin-bottom: 12px;
+                                    position: relative;
+                                    transition: all 0.3s;
+                                ">
+                                    <!-- 步骤编号 -->
+                                    <div style="
+                                        position: absolute;
+                                        top: -12px;
+                                        left: 16px;
+                                        background: white;
+                                        border: 2px solid ${stepBorder};
+                                        border-radius: 20px;
+                                        padding: 4px 12px;
+                                        font-weight: 700;
+                                        font-size: 12px;
+                                        color: ${stepColor};
+                                    ">步骤 ${index + 1}</div>
+                                    
+                                    <!-- Agent名称和状态 -->
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; margin-top: 8px;">
+                                        <div style="font-weight: 600; color: #111827; font-size: 15px;">
+                                            🤖 ${step.agent}
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-size: 20px;">${stepStatus}</span>
+                                            <span style="color: ${stepColor}; font-weight: 600; font-size: 13px;">
+                                                ${step.status === 'completed' ? '完成' : '失败'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 执行时间 -->
+                                    <div style="color: #6b7280; font-size: 13px; margin-bottom: 8px;">
+                                        ⏱️ 耗时: ${step.execution_time ? step.execution_time.toFixed(3) : '0.000'} 秒
+                                    </div>
+                                    
+                                    <!-- 输出结果（可折叠） -->
+                                    ${step.output ? `
+                                        <details style="margin-top: 8px;">
+                                            <summary style="cursor: pointer; color: #6b7280; font-size: 13px; font-weight: 600; user-select: none;">
+                                                📄 查看输出结果
+                                            </summary>
+                                            <pre style="
+                                                background: white;
+                                                border: 1px solid #e5e7eb;
+                                                border-radius: 6px;
+                                                padding: 12px;
+                                                margin-top: 8px;
+                                                font-size: 12px;
+                                                line-height: 1.5;
+                                                max-height: 200px;
+                                                overflow-y: auto;
+                                                color: #374151;
+                                            ">${JSON.stringify(step.output, null, 2)}</pre>
+                                        </details>
+                                    ` : ''}
+                                    
+                                    <!-- 错误信息 -->
+                                    ${step.error ? `
+                                        <div style="
+                                            background: white;
+                                            border: 1px solid #fca5a5;
+                                            border-radius: 6px;
+                                            padding: 12px;
+                                            margin-top: 8px;
+                                            color: #dc2626;
+                                            font-size: 13px;
+                                        ">
+                                            ⚠️ ${step.error}
+                                        </div>
+                                    ` : ''}
+                                    
+                                    ${index < result.execution_graph.length - 1 ? `
+                                        <!-- 连接线 -->
+                                        <div style="
+                                            text-align: center;
+                                            margin-top: 12px;
+                                            color: #9ca3af;
+                                            font-size: 20px;
+                                        ">↓</div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
             
             // 创建模态框
             const modal = document.createElement('div');
@@ -352,10 +700,10 @@
                 <div style="
                     background: white;
                     border-radius: 16px;
-                    padding: 32px;
-                    max-width: 700px;
-                    width: 90%;
-                    max-height: 80vh;
+                    padding: 40px;
+                    max-width: 1200px;
+                    width: 95%;
+                    max-height: 90vh;
                     overflow-y: auto;
                     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
                     animation: slideUp 0.3s ease;
@@ -365,12 +713,12 @@
                         <h2 style="margin: 0; color: ${statusColor}; font-size: 24px;">${statusText}</h2>
                     </div>
                     
-                    <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                    <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                         <div style="display: grid; grid-template-columns: auto 1fr; gap: 12px 16px; font-size: 14px;">
                             <div style="font-weight: 600; color: #6b7280;">工作流：</div>
                             <div style="color: #111827;">${result.workflow_name || 'N/A'}</div>
                             
-                            <div style="font-weight: 600; color: #6b7280;">执行时间：</div>
+                            <div style="font-weight: 600; color: #6b7280;">总耗时：</div>
                             <div style="color: #111827;">${result.execution_time ? result.execution_time.toFixed(3) : '0.000'} 秒</div>
                             
                             <div style="font-weight: 600; color: #6b7280;">执行ID：</div>
@@ -378,15 +726,27 @@
                         </div>
                     </div>
                     
+                    ${naturalLanguageSummary ? `
+                        <div style="margin-bottom: 32px;">
+                            <div style="font-weight: 700; color: #111827; margin-bottom: 20px; font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 28px;">📊</span>
+                                <span>执行结果总结</span>
+                            </div>
+                            ${naturalLanguageSummary}
+                        </div>
+                    ` : ''}
+                    
+                    ${executionGraphHTML}
+                    
                     ${result.error ? `
                         <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 12px; border-radius: 4px; margin-bottom: 16px;">
-                            <div style="font-weight: 600; color: #dc2626; margin-bottom: 8px;">❌ 错误信息：</div>
+                            <div style="font-weight: 600; color: #dc2626; margin-bottom: 8px;">❌ 总体错误：</div>
                             <div style="color: #991b1b; font-family: monospace; font-size: 13px; white-space: pre-wrap;">${result.error}</div>
                         </div>
                     ` : ''}
                     
                     <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                        <div style="font-weight: 600; color: #374151; margin-bottom: 12px;">📋 执行结果：</div>
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 12px;">📋 最终输出：</div>
                         <pre style="
                             background: #1f2937;
                             color: #10b981;
@@ -412,7 +772,7 @@
                         cursor: pointer;
                         transition: transform 0.2s, box-shadow 0.2s;
                     " onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 8px 20px rgba(102, 126, 234, 0.4)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
-                        确定
+                        关闭
                     </button>
                 </div>
             `;
@@ -432,6 +792,26 @@
                     to {
                         opacity: 1;
                         transform: translateY(0);
+                    }
+                }
+                @keyframes slideInRight {
+                    from {
+                        opacity: 0;
+                        transform: translateX(100px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
+                }
+                @keyframes slideOutRight {
+                    from {
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
+                    to {
+                        opacity: 0;
+                        transform: translateX(100px);
                     }
                 }
             `;
@@ -454,22 +834,205 @@
         // 执行工作流（内联版本 - 会覆盖 main.js 中的旧版本）
         window.executeWorkflow = async function(workflowId, workflowName) {
             try {
-                // 弹出输入参数对话框
-                const inputParams = prompt(
-                    `执行工作流「${workflowName}」\n\n请输入参数（JSON格式）：\n例如：{"text": "Hello World", "mode": "upper"}`,
-                    '{"text": "Hello World", "mode": "upper"}'
-                );
+                // 🔥 智能参数模板：根据工作流名称提供不同的默认参数
+                let paramTemplate = {};
+                let paramExample = '';
                 
-                if (inputParams === null) return; // 用户取消
-                
-                // 解析输入参数
-                let params = {};
-                try {
-                    params = JSON.parse(inputParams);
-                } catch (e) {
-                    alert(`❌ JSON格式错误：${e.message}\n\n请使用正确的JSON格式，例如：\n{"text": "Hello", "mode": "upper"}`);
-                    return;
+                if (workflowName.includes('旅游') || workflowName.includes('travel')) {
+                    // 旅游规划工作流
+                    paramTemplate = {
+                        "destination": "北京",
+                        "days": 3,
+                        "budget": 5000
+                    };
+                    paramExample = '{"destination": "北京", "days": 3, "budget": 5000}';
+                } else if (workflowName.includes('内容创作') || workflowName.includes('全栈') || workflowName.includes('文章') || workflowName.includes('content')) {
+                    // 内容创作工作流
+                    paramTemplate = {
+                        "topic": "人工智能的未来发展趋势",
+                        "keywords": "AI, 机器学习, 深度学习",
+                        "target_audience": "技术爱好者"
+                    };
+                    paramExample = '{"topic": "人工智能的未来发展趋势", "keywords": "AI, 机器学习, 深度学习", "target_audience": "技术爱好者"}';
+                } else if (workflowName.includes('大小写') || workflowName.includes('case')) {
+                    // 文本转换工作流
+                    paramTemplate = {
+                        "text": "Hello World",
+                        "case_type": "upper"
+                    };
+                    paramExample = '{"text": "Hello World", "case_type": "upper"}';
+                } else if (workflowName.includes('文本') || workflowName.includes('text')) {
+                    // 通用文本处理工作流
+                    paramTemplate = {
+                        "text": "Hello World",
+                        "case_type": "upper"
+                    };
+                    paramExample = '{"text": "Hello World", "case_type": "upper"}';
+                } else {
+                    // 默认通用模板
+                    paramTemplate = {
+                        "input_data": "请输入内容"
+                    };
+                    paramExample = '{"input_data": "请输入内容"}';
                 }
+                
+                // 🎨 显示自定义参数输入界面
+                showWorkflowInputDialog(workflowId, workflowName, paramTemplate, paramExample);
+                
+            } catch (error) {
+                alert(`❌ 执行工作流时发生错误！\n\n${error.message}`);
+                console.error('执行工作流失败:', error);
+            }
+        }
+        
+        // 显示工作流参数输入对话框
+        function showWorkflowInputDialog(workflowId, workflowName, paramTemplate, paramExample) {
+            // 移除旧的对话框
+            const oldDialog = document.getElementById('workflow-input-dialog');
+            if (oldDialog) oldDialog.remove();
+            
+            const modal = document.createElement('div');
+            modal.id = 'workflow-input-dialog';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s ease;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 16px;
+                    width: 90%;
+                    max-width: 600px;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+                    animation: slideUp 0.3s ease;
+                ">
+                    <!-- 标题栏 -->
+                    <div style="
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        color: white;
+                        padding: 24px 32px;
+                        border-radius: 16px 16px 0 0;
+                    ">
+                        <h2 style="margin: 0; font-size: 22px;">▶️ 执行工作流</h2>
+                        <div style="margin-top: 8px; opacity: 0.9; font-size: 14px;">${workflowName}</div>
+                    </div>
+                    
+                    <!-- 内容区 -->
+                    <div style="padding: 32px;">
+                        <div style="margin-bottom: 16px;">
+                            <div style="color: #374151; font-size: 15px; font-weight: 600; margin-bottom: 8px;">
+                                📝 请输入参数（JSON格式）
+                            </div>
+                            <div style="color: #6b7280; font-size: 13px; margin-bottom: 16px;">
+                                例如：${paramExample}
+                            </div>
+                        </div>
+                        
+                        <textarea id="workflow-input-params" style="
+                            width: 100%;
+                            height: 200px;
+                            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                            font-size: 14px;
+                            padding: 16px;
+                            border: 2px solid #e5e7eb;
+                            border-radius: 8px;
+                            resize: vertical;
+                            background: #f9fafb;
+                            color: #111827;
+                            line-height: 1.6;
+                            transition: border-color 0.2s;
+                        " onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='#e5e7eb'">${JSON.stringify(paramTemplate, null, 2)}</textarea>
+                        
+                        <div id="input-error-message" style="
+                            margin-top: 12px;
+                            padding: 12px;
+                            background: #fee2e2;
+                            border-left: 4px solid #ef4444;
+                            border-radius: 4px;
+                            color: #dc2626;
+                            font-size: 13px;
+                            display: none;
+                        "></div>
+                    </div>
+                    
+                    <!-- 按钮栏 -->
+                    <div style="
+                        padding: 24px 32px;
+                        border-top: 1px solid #e5e7eb;
+                        display: flex;
+                        justify-content: flex-end;
+                        gap: 12px;
+                    ">
+                        <button onclick="document.getElementById('workflow-input-dialog').remove()" style="
+                            padding: 12px 24px;
+                            background: #f3f4f6;
+                            color: #374151;
+                            border: none;
+                            border-radius: 8px;
+                            font-size: 15px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: background 0.2s;
+                        " onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'">
+                            取消
+                        </button>
+                        <button onclick="executeWorkflowWithParams(${workflowId}, '${workflowName}')" style="
+                            padding: 12px 24px;
+                            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                            color: white;
+                            border: none;
+                            border-radius: 8px;
+                            font-size: 15px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: transform 0.2s, box-shadow 0.2s;
+                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(16, 185, 129, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            ▶️ 开始执行
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // 自动聚焦
+            setTimeout(() => {
+                const input = document.getElementById('workflow-input-params');
+                if (input) input.focus();
+            }, 100);
+        }
+        
+        // 执行工作流（带参数）
+        async function executeWorkflowWithParams(workflowId, workflowName) {
+            const inputTextarea = document.getElementById('workflow-input-params');
+            const errorDiv = document.getElementById('input-error-message');
+            const inputParamsStr = inputTextarea.value;
+            
+            // 解析输入参数
+            let params = {};
+            try {
+                params = JSON.parse(inputParamsStr);
+                errorDiv.style.display = 'none';
+            } catch (e) {
+                errorDiv.textContent = `❌ JSON格式错误：${e.message}`;
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            // 关闭输入对话框
+            document.getElementById('workflow-input-dialog').remove();
+            
+            try {
                 
                 console.log(`[内联版本] 执行工作流 ID: ${workflowId}, 名称: ${workflowName}, 参数:`, params);
                 
@@ -488,6 +1051,7 @@
                     workflow_name: workflowName,
                     execution_time: result.execution_time,
                     execution_id: result.execution_id,
+                    execution_graph: result.execution_graph,
                     output: result.output,
                     error: result.error
                 });
@@ -526,6 +1090,262 @@
             } catch (error) {
                 alert(`❌ 删除 Agent 时发生错误！\n\n${error.message}`);
                 console.error('删除 Agent 失败:', error);
+            }
+        }
+        
+        // 编辑工作流（优美的自定义编辑器）
+        async function editWorkflow(workflowId) {
+            try {
+                // 获取工作流详情
+                const response = await fetch(`/api/workflows/${workflowId}`);
+                const workflow = await response.json();
+                
+                if (!response.ok) {
+                    alert(`❌ 获取工作流失败！\n\n${workflow.error || '未知错误'}`);
+                    return;
+                }
+                
+                // 解析workflow_definition
+                let definition = workflow.workflow_definition;
+                if (typeof definition === 'string') {
+                    definition = JSON.parse(definition);
+                }
+                
+                // 显示自定义编辑器模态框
+                showWorkflowEditor(workflowId, workflow.name, definition);
+                
+            } catch (error) {
+                alert(`❌ 编辑工作流时发生错误！\n\n${error.message}`);
+                console.error('编辑工作流失败:', error);
+            }
+        }
+        
+        // 显示工作流编辑器模态框
+        function showWorkflowEditor(workflowId, workflowName, definition) {
+            // 移除旧的编辑器（如果存在）
+            const oldEditor = document.getElementById('workflow-editor-modal');
+            if (oldEditor) oldEditor.remove();
+            
+            // 创建模态框
+            const modal = document.createElement('div');
+            modal.id = 'workflow-editor-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                animation: fadeIn 0.3s ease;
+            `;
+            
+            const definitionStr = JSON.stringify(definition, null, 2);
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 16px;
+                    width: 90%;
+                    max-width: 1000px;
+                    max-height: 90vh;
+                    display: flex;
+                    flex-direction: column;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+                    animation: slideUp 0.3s ease;
+                ">
+                    <!-- 标题栏 -->
+                    <div style="
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        padding: 24px 32px;
+                        border-radius: 16px 16px 0 0;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    ">
+                        <div>
+                            <h2 style="margin: 0; font-size: 24px;">✏️ 编辑工作流</h2>
+                            <div style="margin-top: 8px; opacity: 0.9; font-size: 14px;">${workflowName}</div>
+                        </div>
+                        <button onclick="document.getElementById('workflow-editor-modal').remove()" style="
+                            background: rgba(255, 255, 255, 0.2);
+                            border: none;
+                            color: white;
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 20px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            transition: background 0.2s;
+                        " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                            ×
+                        </button>
+                    </div>
+                    
+                    <!-- 编辑器内容 -->
+                    <div style="
+                        padding: 32px;
+                        overflow-y: auto;
+                        flex: 1;
+                    ">
+                        <div style="margin-bottom: 16px;">
+                            <div style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">
+                                📝 JSON定义（高级功能）
+                            </div>
+                            <div style="color: #9ca3af; font-size: 13px; margin-bottom: 16px;">
+                                提示：修改工作流的执行顺序、参数映射等配置
+                            </div>
+                        </div>
+                        
+                        <textarea id="workflow-json-editor" style="
+                            width: 100%;
+                            height: 400px;
+                            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                            font-size: 14px;
+                            padding: 16px;
+                            border: 2px solid #e5e7eb;
+                            border-radius: 8px;
+                            resize: vertical;
+                            background: #f9fafb;
+                            color: #111827;
+                            line-height: 1.6;
+                            transition: border-color 0.2s;
+                        " onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e7eb'">${definitionStr}</textarea>
+                        
+                        <div id="json-error-message" style="
+                            margin-top: 12px;
+                            padding: 12px;
+                            background: #fee2e2;
+                            border-left: 4px solid #ef4444;
+                            border-radius: 4px;
+                            color: #dc2626;
+                            font-size: 13px;
+                            display: none;
+                        "></div>
+                    </div>
+                    
+                    <!-- 按钮栏 -->
+                    <div style="
+                        padding: 24px 32px;
+                        border-top: 1px solid #e5e7eb;
+                        display: flex;
+                        justify-content: flex-end;
+                        gap: 12px;
+                    ">
+                        <button onclick="document.getElementById('workflow-editor-modal').remove()" style="
+                            padding: 12px 24px;
+                            background: #f3f4f6;
+                            color: #374151;
+                            border: none;
+                            border-radius: 8px;
+                            font-size: 15px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: background 0.2s;
+                        " onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'">
+                            取消
+                        </button>
+                        <button onclick="saveWorkflowDefinition(${workflowId})" style="
+                            padding: 12px 24px;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white;
+                            border: none;
+                            border-radius: 8px;
+                            font-size: 15px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: transform 0.2s, box-shadow 0.2s;
+                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(102, 126, 234, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            💾 保存更改
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // 自动聚焦到编辑器
+            setTimeout(() => {
+                const editor = document.getElementById('workflow-json-editor');
+                if (editor) editor.focus();
+            }, 100);
+        }
+        
+        // 保存工作流定义
+        async function saveWorkflowDefinition(workflowId) {
+            const editorTextarea = document.getElementById('workflow-json-editor');
+            const errorDiv = document.getElementById('json-error-message');
+            const newDefinitionStr = editorTextarea.value;
+            
+            // 验证JSON
+            let newDefinition;
+            try {
+                newDefinition = JSON.parse(newDefinitionStr);
+                errorDiv.style.display = 'none';
+            } catch (e) {
+                errorDiv.textContent = `❌ JSON格式错误：${e.message}`;
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            try {
+                // 提交更新
+                const updateResponse = await fetch(`/api/workflows/${workflowId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        workflow_definition: newDefinition
+                    })
+                });
+                
+                const updateResult = await updateResponse.json();
+                
+                if (updateResponse.ok) {
+                    // 成功：关闭编辑器，显示成功消息
+                    document.getElementById('workflow-editor-modal').remove();
+                    
+                    // 显示成功提示
+                    const successToast = document.createElement('div');
+                    successToast.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        color: white;
+                        padding: 16px 24px;
+                        border-radius: 12px;
+                        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+                        z-index: 10001;
+                        font-size: 15px;
+                        font-weight: 600;
+                        animation: slideInRight 0.3s ease;
+                    `;
+                    successToast.textContent = '✅ 工作流更新成功！';
+                    document.body.appendChild(successToast);
+                    
+                    setTimeout(() => {
+                        successToast.style.animation = 'slideOutRight 0.3s ease';
+                        setTimeout(() => successToast.remove(), 300);
+                    }, 2000);
+                    
+                    // 刷新数据
+                    if (typeof loadData === 'function') {
+                        loadData();
+                    }
+                } else {
+                    errorDiv.textContent = `❌ 更新失败：${updateResult.error || '未知错误'}`;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = `❌ 网络错误：${error.message}`;
+                errorDiv.style.display = 'block';
             }
         }
         

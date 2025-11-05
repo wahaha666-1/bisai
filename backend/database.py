@@ -49,7 +49,7 @@ class Database:
                 llm_model=metadata.get('llm_model'),
                 prompt_template=metadata.get('prompt_template'),
                 category=metadata.get('category', '其他'),
-                icon=metadata.get('icon', 'default'),
+                icon=metadata.get('icon', '🤖'),
                 description=metadata.get('description', ''),
                 author=metadata.get('author', 'system')
             )

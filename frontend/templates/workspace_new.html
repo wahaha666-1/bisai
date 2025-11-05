@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentFlow - AI智能体编排平台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        /* 顶部导航栏 */
+        .navbar {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .nav-menu {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+        
+        .nav-item {
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .nav-item:hover {
+            background: #f5f5f5;
+            color: #667eea;
+        }
+        
+        .nav-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        /* 主容器 */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 32px;
+        }
+        
+        /* 欢迎区域 */
+        .welcome-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 48px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .welcome-section h1 {
+            font-size: 36px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .welcome-section p {
+            font-size: 18px;
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 32px;
+        }
+        
+        .action-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 32px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+        }
+        
+        .action-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+        
+        .action-card-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .action-card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .action-card-desc {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        /* 卡片区域 */
+        .cards-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 32px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* 网格布局 */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+        
+        /* Agent卡片 */
+        .agent-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            border: 2px solid #f0f0f0;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .agent-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+            transform: translateY(-4px);
+        }
+        
+        .agent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        
+        .agent-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .agent-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .agent-desc {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+        
+        .agent-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        /* 工作流卡片 */
+        .workflow-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            border: 2px solid #f0f0f0;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .workflow-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .workflow-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+            transform: translateY(-4px);
+        }
+        
+        .workflow-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .workflow-desc {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 16px;
+        }
+        
+        .workflow-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 1px solid #667eea;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-icon {
+            background: #f5f5f5;
+            color: #666;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-icon:hover {
+            background: #e0e0e0;
+        }
+        
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        
+        .empty-state-text {
+            font-size: 16px;
+            margin-bottom: 24px;
+        }
+        
+        /* 标签 */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background: #e8f5e9;
+            color: #4caf50;
+        }
+        
+        .badge-info {
+            background: #e3f2fd;
+            color: #2196f3;
+        }
+        
+        .badge-warning {
+            background: #fff3e0;
+            color: #ff9800;
+        }
+        
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="logo">
+            <span>🤖</span>
+            <span>AgentFlow</span>
+        </div>
+        <div class="nav-menu">
+            <div class="nav-item active" onclick="window.location.href='/'">工作台</div>
+            <div class="nav-item" onclick="window.location.href='/chat'">AI助手</div>
+            <div class="nav-item" onclick="window.location.href='/dashboard'">社区广场</div>
+            <div class="nav-item" onclick="window.location.href='/workflow-editor'">可视化编辑</div>
+        </div>
+    </nav>
+
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 欢迎区域 -->
+        <div class="welcome-section">
+            <h1>👋 欢迎来到 AgentFlow</h1>
+            <p>AI驱动的智能体编排平台 · 低代码 · 零门槛 · 快速构建</p>
+            
+            <div class="quick-actions">
+                <div class="action-card" onclick="window.location.href='/chat'">
+                    <div class="action-card-icon">💬</div>
+                    <div class="action-card-title">对话创建</div>
+                    <div class="action-card-desc">用自然语言描述需求，AI自动生成Agent和工作流</div>
+                </div>
+                
+                <div class="action-card" onclick="openProfessionalCreateModal()">
+                    <div class="action-card-icon">🛠️</div>
+                    <div class="action-card-title">手动创建</div>
+                    <div class="action-card-desc">编写Python代码，创建自定义的专业Agent</div>
+                </div>
+                
+                <div class="action-card" onclick="window.location.href='/workflow-editor'">
+                    <div class="action-card-icon">🎨</div>
+                    <div class="action-card-title">可视化编排</div>
+                    <div class="action-card-desc">拖拽式连接Agent节点，轻松构建复杂工作流</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent库 -->
+        <div class="cards-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span>📦</span>
+                    <span>Agent 库</span>
+                    <span class="badge badge-info" id="agent-count">0 个</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-secondary" id="batch-manage-btn" onclick="toggleBatchMode()" style="display: none;">📋 批量管理</button>
+                    <button class="btn-primary" onclick="openProfessionalCreateModal()">➕ 创建 Agent</button>
+                </div>
+            </div>
+            
+            <!-- 批量操作工具栏 -->
+            <div id="batch-toolbar" style="display: none; margin: 16px 0; padding: 12px 16px; background: #f8f9fa; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <button class="btn-secondary" onclick="selectAllAgents()">全选</button>
+                    <button class="btn-secondary" onclick="deselectAllAgents()">取消</button>
+                    <span style="margin-left: 16px; color: #666;">已选择 <span id="selected-count">0</span> 个Agent</span>
+                </div>
+                <button class="btn-danger" onclick="batchDeleteAgents()">🗑️ 批量删除 (<span id="delete-count">0</span>)</button>
+            </div>
+            
+            <div class="grid" id="agent-grid">
+                <div class="empty-state">
+                    <div class="empty-state-icon">⏳</div>
+                    <div class="empty-state-text">加载中...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 工作流 -->
+        <div class="cards-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span>🔄</span>
+                    <span>工作流</span>
+                    <span class="badge badge-success" id="workflow-count">0 个</span>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-primary" onclick="window.location.href='/workflow-editor'">🎨 可视化创建</button>
+                    <button class="btn-secondary" onclick="openProfessionalCreateModal()">➕ JSON创建</button>
+                    <button class="btn-secondary" onclick="window.location.href='/upgrade-agents'" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">🚀 升级中心</button>
+                </div>
+            </div>
+            
+            <div class="grid" id="workflow-grid">
+                <div class="empty-state">
+                    <div class="empty-state-icon">⏳</div>
+                    <div class="empty-state-text">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 加载Agents
+        async function loadAgents() {
+            try {
+                const response = await fetch('/api/agents');
+                const data = await response.json();
+                
+                const grid = document.getElementById('agent-grid');
+                document.getElementById('agent-count').textContent = `${data.length} 个`;
+                
+                if (data.length === 0) {
+                    grid.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📦</div>
+                            <div class="empty-state-text">还没有Agent，点击上方按钮创建第一个吧！</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                grid.innerHTML = data.map(agent => `
+                    <div class="agent-card" id="agent-${agent.id}" onclick="selectAgent(${agent.id}, event)">
+                        <input type="checkbox" class="agent-checkbox" id="checkbox-${agent.id}" style="display: none; position: absolute; top: 12px; right: 12px; width: 20px; height: 20px; cursor: pointer;" onclick="event.stopPropagation(); toggleAgentSelect(${agent.id})">
+                        <div class="agent-header">
+                            <div class="agent-icon">${agent.icon || '🤖'}</div>
+                        </div>
+                        <div class="agent-name">${agent.name}</div>
+                        <div class="agent-desc">${agent.description || '暂无描述'}</div>
+                        <div class="agent-stats">
+                            <div class="stat-item">
+                                <span>⚡</span>
+                                <span>${agent.total_executions || 0} 次执行</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>✅</span>
+                                <span>${(agent.success_rate || 0).toFixed(1)}% 成功率</span>
+                            </div>
+                        </div>
+                        <div class="agent-actions" style="margin-top: 12px; display: flex; gap: 8px; justify-content: flex-end;">
+                            <button class="btn-secondary" style="font-size: 12px; padding: 4px 12px;" onclick="event.stopPropagation(); alert('编辑功能开发中')">✏️ 编辑</button>
+                            <button class="btn-danger" style="font-size: 12px; padding: 4px 12px;" onclick="event.stopPropagation(); deleteAgent(${agent.id}, '${agent.name}')">🗑️ 删除</button>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // 显示批量管理按钮
+                if (data.length > 0) {
+                    document.getElementById('batch-manage-btn').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('加载Agents失败:', error);
+            }
+        }
+
+        // 加载工作流
+        async function loadWorkflows() {
+            try {
+                const response = await fetch('/api/workflows');
+                const data = await response.json();
+                
+                const grid = document.getElementById('workflow-grid');
+                document.getElementById('workflow-count').textContent = `${data.length} 个`;
+                
+                if (data.length === 0) {
+                    grid.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🔄</div>
+                            <div class="empty-state-text">还没有工作流，去创建一个吧！</div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                grid.innerHTML = data.map(workflow => `
+                    <div class="workflow-card">
+                        <div class="workflow-name">${workflow.name}</div>
+                        <div class="workflow-desc">${workflow.description || '暂无描述'}</div>
+                        <div class="agent-stats">
+                            <div class="stat-item">
+                                <span>⚡</span>
+                                <span>${workflow.total_executions || 0} 次执行</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>✅</span>
+                                <span>${(workflow.success_rate || 0).toFixed(1)}% 成功率</span>
+                            </div>
+                        </div>
+                        <div class="workflow-actions">
+                            <button class="btn-secondary" onclick="executeWorkflow(${workflow.id}, '${workflow.name}')">▶️ 执行</button>
+                            <button class="btn-secondary" onclick="publishWorkflowAPI(${workflow.id}, '${workflow.name}')" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">🔌 发布API</button>
+                            <button class="btn-secondary" onclick="viewAPIKeys(${workflow.id}, '${workflow.name}')" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">🔑 查看密钥</button>
+                            <button class="btn-icon" onclick="window.open('/workflow-editor?id=${workflow.id}', '_blank')">✏️ 编辑</button>
+                            <button class="btn-icon" onclick="deleteWorkflow(${workflow.id})">🗑️ 删除</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('加载工作流失败:', error);
+            }
+        }
+
+        // 执行工作流
+        async function executeWorkflow(id, name) {
+            // 智能参数模板
+            let paramTemplate = {};
+            if (name.includes('旅游') || name.includes('travel')) {
+                paramTemplate = {"destination": "北京", "days": 3, "budget": 5000};
+            } else if (name.includes('内容创作') || name.includes('全栈') || name.includes('文章') || name.includes('content')) {
+                paramTemplate = {"topic": "人工智能的未来发展趋势", "keywords": "AI, 机器学习", "target_audience": "技术爱好者"};
+            } else {
+                paramTemplate = {"input_data": "请输入内容"};
+            }
+            
+            // 显示自定义输入对话框
+            showWorkflowInputDialog(id, name, paramTemplate);
+        }
+        
+        // 显示工作流参数输入对话框
+        function showWorkflowInputDialog(workflowId, workflowName, paramTemplate) {
+            const oldDialog = document.getElementById('workflow-input-dialog');
+            if (oldDialog) oldDialog.remove();
+            
+            const modal = document.createElement('div');
+            modal.id = 'workflow-input-dialog';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+                display: flex; align-items: center; justify-content: center; z-index: 10000;
+            `;
+            modal.innerHTML = `
+                <div style="background: white; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+                    <h3 style="margin: 0 0 16px 0; color: #1f2937; font-size: 18px;">执行工作流：${workflowName}</h3>
+                    <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 14px;">请输入JSON格式的参数：</p>
+                    <textarea id="workflow-input-params" style="
+                        width: 100%; height: 120px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;
+                        font-family: 'Consolas', monospace; font-size: 13px; resize: vertical;
+                    ">${JSON.stringify(paramTemplate, null, 2)}</textarea>
+                    <div id="input-error-message" style="margin-top: 12px; padding: 12px; background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 4px; color: #dc2626; font-size: 13px; display: none;"></div>
+                    <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end;">
+                        <button onclick="document.getElementById('workflow-input-dialog').remove()" style="
+                            padding: 10px 20px; background: #f3f4f6; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;
+                        ">取消</button>
+                        <button onclick="executeWorkflowWithParams(${workflowId}, '${workflowName}')" style="
+                            padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;
+                        ">确定</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.getElementById('workflow-input-params').focus();
+        }
+        
+        // 执行工作流（带参数）
+        async function executeWorkflowWithParams(workflowId, workflowName) {
+            const inputTextarea = document.getElementById('workflow-input-params');
+            const errorDiv = document.getElementById('input-error-message');
+            const inputParamsStr = inputTextarea.value;
+            
+            let params = {};
+            try {
+                params = JSON.parse(inputParamsStr);
+                errorDiv.style.display = 'none';
+            } catch (e) {
+                errorDiv.textContent = '❌ JSON 格式错误：' + e.message;
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            // 关闭输入对话框
+            document.getElementById('workflow-input-dialog').remove();
+            
+            // 立即显示执行进度模态框
+            showExecutionModal(workflowName);
+            
+            // 流式输出：开始执行
+            await typeExecutionMessage(`🚀 开始执行工作流：${workflowName}\n\n`);
+            await typeExecutionMessage('📝 输入参数：\n');
+            await typeExecutionMessage(JSON.stringify(params, null, 2) + '\n\n');
+            await typeExecutionMessage('⏳ 正在调用Agent...\n');
+            
+            updateExecutionProgress(30);
+            
+            try {
+                const response = await fetch(`/api/workflows/${workflowId}/execute`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(params)
+                });
+                
+                updateExecutionProgress(70);
+                await typeExecutionMessage('✅ Agent执行完成\n');
+                await typeExecutionMessage('📊 正在解析结果...\n\n');
+                
+                const result = await response.json();
+                updateExecutionProgress(100);
+                
+                if (result.success) {
+                    await typeExecutionMessage('🎉 执行成功！\n\n');
+                    // 显示详细结果
+                    await displayWorkflowResult(result);
+                } else {
+                    await typeExecutionMessage(`❌ 执行失败：${result.error}\n`);
+                }
+            } catch (error) {
+                await typeExecutionMessage(`❌ 错误：${error.message}\n`);
+            }
+        }
+        
+        // 显示执行进度模态框
+        function showExecutionModal(workflowName) {
+            // 移除旧的模态框（如果存在）
+            const oldModal = document.getElementById('execution-modal');
+            if (oldModal) oldModal.remove();
+            
+            const modal = document.createElement('div');
+            modal.id = 'execution-modal';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+                display: flex; align-items: center; justify-content: center; 
+                z-index: 10000; animation: fadeIn 0.3s;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white; border-radius: 20px; width: 90%; max-width: 800px;
+                    max-height: 85vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                    animation: slideUp 0.3s; display: flex; flex-direction: column;
+                ">
+                    <div style="
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white; padding: 24px; display: flex; justify-content: space-between; align-items: center;
+                    ">
+                        <h2 style="margin: 0; font-size: 22px;">⚡ 工作流执行中</h2>
+                        <button onclick="closeExecutionModal()" style="
+                            background: rgba(255,255,255,0.2); border: none; color: white;
+                            width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+                            font-size: 20px; display: flex; align-items: center; justify-content: center;
+                            transition: all 0.3s;
+                        ">×</button>
+                    </div>
+                    
+                    <div style="padding: 24px; flex: 1; overflow-y: auto;">
+                        <div style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="color: #6b7280; font-size: 14px;">执行进度</span>
+                                <span id="execution-progress-text" style="color: #667eea; font-weight: 600;">0%</span>
+                            </div>
+                            <div style="width: 100%; height: 12px; background: rgba(102, 126, 234, 0.2); border-radius: 6px; overflow: hidden;">
+                                <div id="execution-progress-bar" style="
+                                    height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                    width: 0%; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                                "></div>
+                            </div>
+                        </div>
+                        
+                        <div id="execution-log" style="
+                            background: #1f2937; color: #f9fafb; padding: 20px; border-radius: 12px;
+                            font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8;
+                            min-height: 300px; max-height: 500px; overflow-y: auto;
+                        "></div>
+                        
+                        <div id="execution-result-container" style="margin-top: 20px; display: none;"></div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+        
+        // 关闭执行模态框
+        function closeExecutionModal() {
+            const modal = document.getElementById('execution-modal');
+            if (modal) modal.remove();
+        }
+        
+        // 流式输出执行消息
+        async function typeExecutionMessage(message, speed = 20) {
+            const logDiv = document.getElementById('execution-log');
+            if (!logDiv) return;
+            
+            for (let char of message) {
+                logDiv.innerHTML += char === '\n' ? '<br>' : char;
+                logDiv.scrollTop = logDiv.scrollHeight;
+                
+                if (char !== '\n' && Math.random() > 0.6) {
+                    await sleep(speed);
+                }
+            }
+        }
+        
+        // 更新执行进度
+        function updateExecutionProgress(percent) {
+            const bar = document.getElementById('execution-progress-bar');
+            const text = document.getElementById('execution-progress-text');
+            if (bar) bar.style.width = percent + '%';
+            if (text) text.textContent = Math.round(percent) + '%';
+        }
+        
+        // 显示工作流结果
+        async function displayWorkflowResult(result) {
+            const container = document.getElementById('execution-result-container');
+            if (!container) return;
+            
+            // 提取关键结果
+            let outputHTML = '';
+            if (result.output) {
+                let finalContent = null;
+                
+                if (result.output.seo优化_result?.result?.final_content) {
+                    finalContent = result.output.seo优化_result.result.final_content;
+                } else if (result.output.内容创作_result?.result?.content) {
+                    finalContent = result.output.内容创作_result.result.content;
+                }
+                
+                if (finalContent) {
+                    outputHTML = `
+                        <div style="
+                            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+                            padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;
+                        ">
+                            <h3 style="margin: 0 0 16px 0; color: #065f46; display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 24px;">📄</span>
+                                <span>生成的文章</span>
+                            </h3>
+                            <div style="
+                                background: white; padding: 24px; border-radius: 8px;
+                                max-height: 400px; overflow-y: auto; white-space: pre-wrap;
+                                font-family: 'Microsoft YaHei', sans-serif; line-height: 1.8;
+                                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                            ">${finalContent}</div>
+                        </div>
+                        
+                        <details style="margin-top: 16px;">
+                            <summary style="
+                                cursor: pointer; font-weight: 600; color: #667eea; 
+                                padding: 12px; background: #f3f4f6; border-radius: 8px;
+                                transition: all 0.3s;
+                            ">📊 查看完整输出数据</summary>
+                            <pre style="
+                                background: #1f2937; color: #f9fafb; padding: 16px; 
+                                border-radius: 8px; overflow-x: auto; margin-top: 12px; 
+                                font-size: 12px; line-height: 1.6;
+                            ">${JSON.stringify(result.output, null, 2)}</pre>
+                        </details>
+                    `;
+                } else {
+                    outputHTML = `
+                        <div style="
+                            background: #f3f4f6; padding: 16px; border-radius: 8px;
+                            border-left: 4px solid #667eea;
+                        ">
+                            <h3 style="margin: 0 0 12px 0; color: #4b5563;">📊 执行输出</h3>
+                            <pre style="
+                                background: #1f2937; color: #f9fafb; padding: 16px; 
+                                border-radius: 8px; overflow-x: auto; font-size: 13px; 
+                                line-height: 1.6; margin: 0;
+                            ">${JSON.stringify(result.output, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } else {
+                outputHTML = `
+                    <div style="
+                        background: #fef3c7; padding: 16px; border-radius: 8px;
+                        border-left: 4px solid #f59e0b;
+                    ">
+                        <p style="margin: 0; color: #92400e;">⚠️ 未获取到输出数据</p>
+                    </div>
+                `;
+            }
+            
+            // 逐字显示结果
+            await typeExecutionMessage('═══════════════════════════════════════\n\n');
+            container.style.display = 'block';
+            container.innerHTML = outputHTML;
+        }
+        
+        // 睡眠函数
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        // 显示执行结果详情（旧函数，保留兼容性）
+        function showExecutionResult(workflowName, result) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+                display: flex; align-items: center; justify-content: center; z-index: 10000;
+            `;
+            
+            // 提取关键结果
+            let outputDisplay = '';
+            if (result.output) {
+                // 查找最终内容（通常在seo优化或内容创作的结果中）
+                let finalContent = null;
+                
+                if (result.output.seo优化_result?.result?.final_content) {
+                    finalContent = result.output.seo优化_result.result.final_content;
+                } else if (result.output.内容创作_result?.result?.content) {
+                    finalContent = result.output.内容创作_result.result.content;
+                }
+                
+                if (finalContent) {
+                    outputDisplay = `
+                        <div style="margin-bottom: 20px;">
+                            <h3 style="margin: 0 0 12px 0; color: #4b5563;">📄 生成的文章：</h3>
+                            <div style="
+                                background: #f9fafb; padding: 20px; border-radius: 8px; 
+                                max-height: 400px; overflow-y: auto; 
+                                border: 2px solid #e5e7eb; white-space: pre-wrap;
+                                font-family: 'Microsoft YaHei', sans-serif; line-height: 1.8;
+                            ">${finalContent}</div>
+                        </div>
+                        
+                        <details style="margin-top: 16px;">
+                            <summary style="cursor: pointer; font-weight: 600; color: #667eea; padding: 8px; background: #f3f4f6; border-radius: 4px;">
+                                📊 查看完整输出数据
+                            </summary>
+                            <pre style="background: #1f2937; color: #f9fafb; padding: 16px; border-radius: 8px; overflow-x: auto; margin-top: 12px; font-size: 12px;">${JSON.stringify(result.output, null, 2)}</pre>
+                        </details>
+                    `;
+                } else {
+                    outputDisplay = `
+                        <pre style="background: #1f2937; color: #f9fafb; padding: 16px; border-radius: 8px; overflow-x: auto; max-height: 400px; font-size: 13px;">${JSON.stringify(result.output, null, 2)}</pre>
+                    `;
+                }
+            } else {
+                outputDisplay = '<div style="color: #9ca3af;">无输出数据</div>';
+            }
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white; border-radius: 16px; padding: 32px;
+                    max-width: 900px; width: 90%; max-height: 85vh; overflow-y: auto;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h2 style="margin: 0; color: #1a1a1a; font-size: 24px;">
+                            ✅ 执行成功：${workflowName}
+                        </h2>
+                        <div style="font-size: 14px; color: #6b7280;">
+                            执行ID: #${result.execution_id || 'N/A'}
+                        </div>
+                    </div>
+                    
+                    ${outputDisplay}
+                    
+                    <button onclick="this.closest('[style*=\\'position: fixed\\']').remove()" style="
+                        width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;
+                        border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; margin-top: 20px;
+                    ">关闭</button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+        }
+        
+        // Toast通知
+        function showToast(message, type = 'info') {
+            const colors = {
+                success: '#10b981',
+                error: '#ef4444',
+                info: '#3b82f6'
+            };
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed; top: 20px; right: 20px; padding: 16px 24px;
+                background: ${colors[type]}; color: white; border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000;
+                animation: slideIn 0.3s ease-out;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // ============================================
+        // 批量管理功能
+        // ============================================
+        let batchMode = false;
+        let selectedAgents = new Set();
+        
+        function toggleBatchMode() {
+            batchMode = !batchMode;
+            const checkboxes = document.querySelectorAll('.agent-checkbox');
+            const toolbar = document.getElementById('batch-toolbar');
+            const btn = document.getElementById('batch-manage-btn');
+            
+            if (batchMode) {
+                checkboxes.forEach(cb => cb.style.display = 'block');
+                toolbar.style.display = 'flex';
+                btn.textContent = '✖️ 退出批量';
+                btn.classList.add('btn-danger');
+                btn.classList.remove('btn-secondary');
+            } else {
+                checkboxes.forEach(cb => {
+                    cb.style.display = 'none';
+                    cb.checked = false;
+                });
+                toolbar.style.display = 'none';
+                btn.textContent = '📋 批量管理';
+                btn.classList.add('btn-secondary');
+                btn.classList.remove('btn-danger');
+                selectedAgents.clear();
+                updateSelectedCount();
+            }
+        }
+        
+        function toggleAgentSelect(id) {
+            const checkbox = document.getElementById(`checkbox-${id}`);
+            if (checkbox.checked) {
+                selectedAgents.add(id);
+            } else {
+                selectedAgents.delete(id);
+            }
+            updateSelectedCount();
+        }
+        
+        function selectAgent(id, event) {
+            if (batchMode && event.target.classList.contains('agent-card')) {
+                const checkbox = document.getElementById(`checkbox-${id}`);
+                checkbox.checked = !checkbox.checked;
+                toggleAgentSelect(id);
+            }
+        }
+        
+        function selectAllAgents() {
+            document.querySelectorAll('.agent-checkbox').forEach(cb => {
+                cb.checked = true;
+                const id = parseInt(cb.id.replace('checkbox-', ''));
+                selectedAgents.add(id);
+            });
+            updateSelectedCount();
+        }
+        
+        function deselectAllAgents() {
+            document.querySelectorAll('.agent-checkbox').forEach(cb => {
+                cb.checked = false;
+            });
+            selectedAgents.clear();
+            updateSelectedCount();
+        }
+        
+        function updateSelectedCount() {
+            document.getElementById('selected-count').textContent = selectedAgents.size;
+            document.getElementById('delete-count').textContent = selectedAgents.size;
+        }
+        
+        async function batchDeleteAgents() {
+            if (selectedAgents.size === 0) {
+                showToast('请先选择要删除的Agent', 'error');
+                return;
+            }
+            
+            if (!confirm(`确定要删除选中的 ${selectedAgents.size} 个Agent吗？`)) {
+                return;
+            }
+            
+            showToast('批量删除中...', 'info');
+            let successCount = 0;
+            let failCount = 0;
+            
+            for (const id of selectedAgents) {
+                try {
+                    const response = await fetch(`/api/agents/${id}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        successCount++;
+                        document.getElementById(`agent-${id}`).remove();
+                    } else {
+                        failCount++;
+                    }
+                } catch (error) {
+                    failCount++;
+                }
+            }
+            
+            selectedAgents.clear();
+            toggleBatchMode();
+            
+            if (failCount === 0) {
+                showToast(`✅ 成功删除 ${successCount} 个Agent`, 'success');
+            } else {
+                showToast(`删除完成：成功 ${successCount}，失败 ${failCount}`, 'error');
+            }
+            
+            loadAgents();
+        }
+        
+        async function deleteAgent(id, name) {
+            if (!confirm(`确定要删除 "${name}" 吗？`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/agents/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showToast('✅ 删除成功', 'success');
+                    loadAgents();
+                } else {
+                    showToast('❌ 删除失败', 'error');
+                }
+            } catch (error) {
+                showToast('❌ 删除失败：' + error.message, 'error');
+            }
+        }
+
+        // 删除工作流
+        async function deleteWorkflow(id) {
+            if (!confirm('确定要删除这个工作流吗？')) return;
+            
+            try {
+                const response = await fetch(`/api/workflows/${id}`, {method: 'DELETE'});
+                if (response.ok) {
+                    alert('✅ 删除成功');
+                    loadWorkflows();
+                }
+            } catch (error) {
+                alert('❌ 删除失败：' + error.message);
+            }
+        }
+
+        // 打开专业创建模态框
+        function openProfessionalCreateModal() {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.5); z-index: 10001;
+                display: flex; align-items: center; justify-content: center;
+                animation: fadeIn 0.3s ease-out;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white; border-radius: 16px; padding: 32px;
+                    max-width: 800px; width: 90%; max-height: 85vh; overflow-y: auto;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                ">
+                    <h2 style="margin: 0 0 24px 0; color: #1a1a1a; font-size: 24px;">
+                        🛠️ 专业创建模式
+                    </h2>
+                    
+                    <div style="background: #f0f9ff; border: 2px solid #3b82f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                        <strong>💡 提示：</strong>
+                        <div style="color: #1e40af; margin-top: 8px;">
+                            专业创建模式适合有Python编程经验的用户，可以编写自定义Agent代码和工作流配置。
+                        </div>
+                    </div>
+                    
+                    <!-- Agent创建表单 -->
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 16px 0; color: #374151; font-size: 18px;">创建Agent</h3>
+                        
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; margin-bottom: 4px; font-weight: 600; color: #374151;">Agent名称</label>
+                            <input type="text" id="pro-agent-name" placeholder="例如：data_processor" style="
+                                width: 100%; padding: 10px; border: 2px solid #e5e7eb;
+                                border-radius: 8px; font-size: 14px; box-sizing: border-box;
+                            ">
+                        </div>
+                        
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; margin-bottom: 4px; font-weight: 600; color: #374151;">描述</label>
+                            <input type="text" id="pro-agent-desc" placeholder="简要描述Agent功能" style="
+                                width: 100%; padding: 10px; border: 2px solid #e5e7eb;
+                                border-radius: 8px; font-size: 14px; box-sizing: border-box;
+                            ">
+                        </div>
+                        
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; margin-bottom: 4px; font-weight: 600; color: #374151;">Python代码</label>
+                            <textarea id="pro-agent-code" placeholder="def my_agent(input_data: dict) -> dict:
+    '''Agent功能说明'''
+    try:
+        # 处理逻辑
+        result = input_data
+        return {'success': True, 'result': result}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}" style="
+                                width: 100%; padding: 12px; border: 2px solid #e5e7eb;
+                                border-radius: 8px; font-size: 13px; font-family: monospace;
+                                min-height: 200px; box-sizing: border-box;
+                            "></textarea>
+                            <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
+                                ⚠️ 请确保函数签名为：<code>def agent_name(input_data: dict) -> dict</code>
+                            </div>
+                        </div>
+                        
+                        <button onclick="createProfessionalAgent()" style="
+                            width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600;
+                        ">✅ 创建Agent</button>
+                    </div>
+                    
+                    <div style="border-top: 2px solid #e5e7eb; padding-top: 20px;">
+                        <h3 style="margin: 0 0 16px 0; color: #374151; font-size: 18px;">创建工作流（JSON）</h3>
+                        
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; margin-bottom: 4px; font-weight: 600; color: #374151;">工作流配置（JSON）</label>
+                            <textarea id="pro-workflow-json" placeholder='{
+  "name": "我的工作流",
+  "description": "工作流描述",
+  "workflow_definition": {
+    "agents": ["agent1", "agent2"],
+    "sequence": [
+      {
+        "agent": "agent1",
+        "input_mapping": {"input_data": "$.input"},
+        "output_key": "agent1"
+      },
+      {
+        "agent": "agent2",
+        "input_mapping": {"input_data": "$.agent1.result"},
+        "output_key": "agent2"
+      }
+    ]
+  }
+}' style="
+                                width: 100%; padding: 12px; border: 2px solid #e5e7eb;
+                                border-radius: 8px; font-size: 13px; font-family: monospace;
+                                min-height: 200px; box-sizing: border-box;
+                            "></textarea>
+                        </div>
+                        
+                        <button onclick="createProfessionalWorkflow()" style="
+                            width: 100%; padding: 12px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                            color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600;
+                        ">✅ 创建工作流</button>
+                    </div>
+                    
+                    <button onclick="this.closest('[style*=\\'position: fixed\\']').remove()" style="
+                        width: 100%; padding: 12px; background: #f3f4f6; color: #374151; margin-top: 20px;
+                        border: none; border-radius: 8px; cursor: pointer; font-size: 16px;
+                    ">关闭</button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+        }
+        
+        async function createProfessionalAgent() {
+            const name = document.getElementById('pro-agent-name').value.trim();
+            const desc = document.getElementById('pro-agent-desc').value.trim();
+            const code = document.getElementById('pro-agent-code').value.trim();
+            
+            if (!name || !code) {
+                showToast('❌ 请填写Agent名称和代码', 'error');
+                return;
+            }
+            
+            showToast('创建中...', 'info');
+            
+            try {
+                const response = await fetch('/api/agents', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        description: desc,
+                        code: code,
+                        agent_type: 'processor'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showToast('✅ Agent创建成功！', 'success');
+                    document.querySelectorAll('[style*="position: fixed"]').forEach(m => m.remove());
+                    loadAgents();
+                } else {
+                    showToast('❌ 创建失败：' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showToast('❌ 创建失败：' + error.message, 'error');
+            }
+        }
+        
+        async function createProfessionalWorkflow() {
+            const jsonStr = document.getElementById('pro-workflow-json').value.trim();
+            
+            if (!jsonStr) {
+                showToast('❌ 请填写工作流配置', 'error');
+                return;
+            }
+            
+            try {
+                const config = JSON.parse(jsonStr);
+                
+                showToast('创建中...', 'info');
+                
+                const response = await fetch('/api/workflows', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showToast('✅ 工作流创建成功！', 'success');
+                    document.querySelectorAll('[style*="position: fixed"]').forEach(m => m.remove());
+                    loadWorkflows();
+                } else {
+                    showToast('❌ 创建失败：' + (result.error || '未知错误'), 'error');
+                }
+            } catch (e) {
+                if (e instanceof SyntaxError) {
+                    showToast('❌ JSON格式错误：' + e.message, 'error');
+                } else {
+                    showToast('❌ 创建失败：' + e.message, 'error');
+                }
+            }
+        }
+
+        // ============================================
+        // API发布功能
+        // ============================================
+        
+        async function publishWorkflowAPI(workflowId, workflowName) {
+            // 🎨 使用自定义模态框替代原生prompt
+            showCustomPrompt(
+                `为"${workflowName}"的API密钥起个名字：`,
+                'Default API Key',
+                async (keyName) => {
+                    if (!keyName) return;
+                    
+                    showToast('生成API密钥中...', 'info');
+            
+                    try {
+                        const response = await fetch(`/api/workflows/${workflowId}/publish`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({name: keyName})
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showToast('✅ API发布成功！', 'success');
+                            showAPIKeyModal(data);
+                        } else {
+                            showToast('❌ 发布失败：' + (data.error || '未知错误'), 'error');
+                        }
+                    } catch (error) {
+                        showToast('❌ 发布失败：' + error.message, 'error');
+                    }
+                }
+            );
+        }
+        
+        // 🎨 自定义Prompt模态框
+        function showCustomPrompt(message, defaultValue, callback) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.5); z-index: 10001;
+                display: flex; align-items: center; justify-content: center;
+                animation: fadeIn 0.3s ease-out;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white; border-radius: 16px; padding: 32px;
+                    max-width: 500px; width: 90%;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                ">
+                    <h3 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 20px;">
+                        ${message}
+                    </h3>
+                    
+                    <input type="text" id="custom-prompt-input" value="${defaultValue}" style="
+                        width: 100%; padding: 12px; border: 2px solid #e5e7eb;
+                        border-radius: 8px; font-size: 16px; box-sizing: border-box;
+                        transition: border-color 0.3s;
+                    " />
+                    
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button id="custom-prompt-cancel" style="
+                            flex: 1; padding: 12px; background: #f3f4f6; color: #374151;
+                            border: none; border-radius: 8px; cursor: pointer; font-size: 16px;
+                            transition: background 0.3s;
+                        ">取消</button>
+                        <button id="custom-prompt-confirm" style="
+                            flex: 1; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;
+                            transition: transform 0.2s;
+                        ">确定</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            const input = document.getElementById('custom-prompt-input');
+            const confirmBtn = document.getElementById('custom-prompt-confirm');
+            const cancelBtn = document.getElementById('custom-prompt-cancel');
+            
+            input.focus();
+            input.select();
+            
+            // Enter键确认
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    callback(input.value);
+                    modal.remove();
+                } else if (e.key === 'Escape') {
+                    modal.remove();
+                }
+            };
+            
+            confirmBtn.onclick = () => {
+                callback(input.value);
+                modal.remove();
+            };
+            
+            cancelBtn.onclick = () => modal.remove();
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+            
+            // 悬停效果
+            confirmBtn.onmouseenter = () => confirmBtn.style.transform = 'scale(1.02)';
+            confirmBtn.onmouseleave = () => confirmBtn.style.transform = 'scale(1)';
+            cancelBtn.onmouseenter = () => cancelBtn.style.background = '#e5e7eb';
+            cancelBtn.onmouseleave = () => cancelBtn.style.background = '#f3f4f6';
+            input.onfocus = () => input.style.borderColor = '#667eea';
+            input.onblur = () => input.style.borderColor = '#e5e7eb';
+        }
+        
+        function showAPIKeyModal(data) {
+            // 创建模态框
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.5); z-index: 10000;
+                display: flex; align-items: center; justify-content: center;
+                animation: fadeIn 0.3s ease-out;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white; border-radius: 16px; padding: 32px;
+                    max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                ">
+                    <h2 style="margin: 0 0 24px 0; color: #1a1a1a; font-size: 24px; display: flex; align-items: center; gap: 12px;">
+                        🔌 API发布成功！
+                    </h2>
+                    
+                    <div style="background: #f0f9ff; border: 2px solid #3b82f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                        <div style="font-weight: 600; margin-bottom: 8px;">🔑 API密钥：</div>
+                        <div style="background: white; padding: 12px; border-radius: 4px; font-family: monospace; word-break: break-all; font-size: 14px;">
+                            ${data.api_key}
+                        </div>
+                        <button onclick="copyToClipboard('${data.api_key}', 'API Key')" style="
+                            margin-top: 8px; padding: 8px 16px; background: #3b82f6; color: white;
+                            border: none; border-radius: 4px; cursor: pointer; font-size: 14px;
+                        ">📋 复制密钥</button>
+                    </div>
+                    
+                    <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                        <strong>⚠️ 重要提示：</strong>
+                        <ul style="margin: 8px 0 0 0; padding-left: 20px; color: #92400e;">
+                            <li>请立即复制并妥善保管此密钥</li>
+                            <li>密钥泄露可能导致工作流被滥用</li>
+                            <li>如需撤销，请在工作台删除该密钥</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <h3 style="margin: 0 0 12px 0; color: #4b5563;">📡 API接口地址：</h3>
+                        <div style="background: #f9fafb; padding: 12px; border-radius: 4px; font-family: monospace; font-size: 14px;">
+                            POST ${window.location.origin}/api/public/execute
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin: 24px 0 12px 0; color: #4b5563;">📚 调用示例：</h3>
+                    
+                    <!-- cURL示例 -->
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                            <span>🐚 cURL</span>
+                            <button onclick="copyToClipboard(\`${data.examples.curl.replace(/`/g, '\\`')}\`, 'cURL示例')" style="
+                                padding: 4px 12px; background: #10b981; color: white;
+                                border: none; border-radius: 4px; cursor: pointer; font-size: 12px;
+                            ">复制</button>
+                        </div>
+                        <pre style="background: #1f2937; color: #f9fafb; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 0; font-size: 13px;"><code>${data.examples.curl}</code></pre>
+                    </div>
+                    
+                    <!-- Python示例 -->
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                            <span>🐍 Python</span>
+                            <button onclick="copyToClipboard(\`${data.examples.python.replace(/`/g, '\\`')}\`, 'Python示例')" style="
+                                padding: 4px 12px; background: #10b981; color: white;
+                                border: none; border-radius: 4px; cursor: pointer; font-size: 12px;
+                            ">复制</button>
+                        </div>
+                        <pre style="background: #1f2937; color: #f9fafb; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 0; font-size: 13px;"><code>${data.examples.python}</code></pre>
+                    </div>
+                    
+                    <!-- JavaScript示例 -->
+                    <div style="margin-bottom: 24px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                            <span>⚡ JavaScript</span>
+                            <button onclick="copyToClipboard(\`${data.examples.javascript.replace(/`/g, '\\`')}\`, 'JavaScript示例')" style="
+                                padding: 4px 12px; background: #10b981; color: white;
+                                border: none; border-radius: 4px; cursor: pointer; font-size: 12px;
+                            ">复制</button>
+                        </div>
+                        <pre style="background: #1f2937; color: #f9fafb; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 0; font-size: 13px;"><code>${data.examples.javascript}</code></pre>
+                    </div>
+                    
+                    <button onclick="this.closest('[style*=\\'position: fixed\\']').remove()" style="
+                        width: 100%; padding: 12px; background: #6366f1; color: white;
+                        border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600;
+                    ">✅ 完成</button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+        }
+        
+        function copyToClipboard(text, label = '内容') {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(`✅ ${label}已复制`, 'success');
+            }).catch(err => {
+                showToast(`❌ 复制失败`, 'error');
+            });
+        }
+        
+        // ============================================
+        // 查看和管理API密钥
+        // ============================================
+        
+        async function viewAPIKeys(workflowId, workflowName) {
+            showToast('加载密钥列表...', 'info');
+            
+            try {
+                const response = await fetch(`/api/workflows/${workflowId}/api-keys`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAPIKeysModal(workflowId, workflowName, data.keys);
+                } else {
+                    showToast('❌ 加载失败', 'error');
+                }
+            } catch (error) {
+                showToast('❌ 加载失败：' + error.message, 'error');
+            }
+        }
+        
+        function showAPIKeysModal(workflowId, workflowName, keys) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.5); z-index: 10000;
+                display: flex; align-items: center; justify-content: center;
+                animation: fadeIn 0.3s ease-out;
+            `;
+            
+            const keysHTML = keys.length === 0 ? `
+                <div style="text-align: center; padding: 40px; color: #9ca3af;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">🔐</div>
+                    <div style="font-size: 18px; margin-bottom: 8px;">还没有API密钥</div>
+                    <div style="font-size: 14px;">点击【🔌 发布API】创建第一个密钥</div>
+                </div>
+            ` : keys.map(key => `
+                <div style="
+                    background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;
+                    padding: 16px; margin-bottom: 12px;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 16px; color: #1f2937;">${key.name}</div>
+                            <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
+                                创建于 ${new Date(key.created_date).toLocaleString('zh-CN')}
+                            </div>
+                        </div>
+                        <div>
+                            ${key.is_active ? 
+                                '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">✅ 活跃</span>' : 
+                                '<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">❌ 已禁用</span>'
+                            }
+                        </div>
+                    </div>
+                    
+                    <div style="
+                        background: white; padding: 12px; border-radius: 8px;
+                        font-family: monospace; font-size: 13px; word-break: break-all;
+                        margin-bottom: 12px; border: 1px solid #e5e7eb;
+                    ">${key.api_key}</div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 12px; color: #6b7280;">
+                            <span>📊 调用次数: ${key.calls_count}</span>
+                            <span style="margin-left: 16px;">🕐 最后使用: ${key.last_used ? new Date(key.last_used).toLocaleString('zh-CN') : '从未使用'}</span>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="event.stopPropagation(); copyToClipboard('${key.api_key}', 'API Key')" style="
+                                padding: 6px 12px; background: #3b82f6; color: white;
+                                border: none; border-radius: 6px; cursor: pointer; font-size: 12px;
+                            ">📋 复制</button>
+                            <button onclick="event.stopPropagation(); deleteAPIKey(${key.id}, '${key.name}', ${workflowId}, '${workflowName}')" style="
+                                padding: 6px 12px; background: #ef4444; color: white;
+                                border: none; border-radius: 6px; cursor: pointer; font-size: 12px;
+                            ">🗑️ 删除</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white; border-radius: 16px; padding: 32px;
+                    max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h2 style="margin: 0; color: #1a1a1a; font-size: 24px;">
+                            🔑 API密钥管理
+                        </h2>
+                        <div style="font-size: 14px; color: #6b7280;">
+                            工作流: ${workflowName}
+                        </div>
+                    </div>
+                    
+                    ${keys.length > 0 ? `
+                        <div style="background: #eff6ff; border: 2px solid #3b82f6; border-radius: 8px; padding: 12px; margin-bottom: 20px;">
+                            <strong>💡 提示：</strong>
+                            <ul style="margin: 8px 0 0 0; padding-left: 20px; color: #1e40af;">
+                                <li>API密钥永久保存，关闭浏览器后依然有效</li>
+                                <li>请妥善保管密钥，避免泄露</li>
+                                <li>可以创建多个密钥用于不同场景</li>
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;">
+                        ${keysHTML}
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px;">
+                        <button onclick="publishWorkflowAPI(${workflowId}, '${workflowName}'); this.closest('[style*=\\'position: fixed\\']').remove();" style="
+                            flex: 1; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;
+                        ">➕ 创建新密钥</button>
+                        <button onclick="this.closest('[style*=\\'position: fixed\\']').remove()" style="
+                            flex: 1; padding: 12px; background: #f3f4f6; color: #374151;
+                            border: none; border-radius: 8px; cursor: pointer; font-size: 16px;
+                        ">关闭</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+        }
+        
+        async function deleteAPIKey(keyId, keyName, workflowId, workflowName) {
+            if (!confirm(`确定要删除密钥"${keyName}"吗？\n\n删除后使用此密钥的API调用将失败！`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/workflows/api-keys/${keyId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    showToast('✅ 密钥已删除', 'success');
+                    // 关闭当前模态框
+                    document.querySelectorAll('[style*="position: fixed"]').forEach(m => m.remove());
+                    // 重新打开密钥列表
+                    setTimeout(() => viewAPIKeys(workflowId, workflowName), 500);
+                } else {
+                    showToast('❌ 删除失败', 'error');
+                }
+            } catch (error) {
+                showToast('❌ 删除失败：' + error.message, 'error');
+            }
+        }
+
+        // 页面加载时加载数据
+        loadAgents();
+        loadWorkflows();
+    </script>
+</body>
+</html>
+

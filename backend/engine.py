@@ -95,7 +95,7 @@ class AgentRegistry:
         output_schema: Dict = None,
         prompt_template: str = None,
         category: str = "其他",
-        icon: str = "default"
+        icon: str = "🤖"
     ):
         """Agent 注册装饰器"""
         def decorator(func: Callable):
@@ -178,6 +178,51 @@ class AgentRegistry:
             return func
         
         return decorator
+    
+    def register_agent(
+        self,
+        name: str,
+        code: str,
+        agent_type: str = 'processor',
+        description: str = '',
+        category: str = '其他',
+        icon: str = '🤖'
+    ):
+        """直接注册一个Agent（用于从数据库或AI创建的Agent）"""
+        try:
+            # 执行代码以获取函数对象
+            exec_globals = {}
+            exec(code, exec_globals)
+            
+            # 查找定义的函数
+            agent_func = None
+            for func_name, obj in exec_globals.items():
+                if callable(obj) and not func_name.startswith('_'):
+                    agent_func = obj
+                    break
+            
+            if not agent_func:
+                raise ValueError(f"代码中未找到可调用的函数")
+            
+            # 存储到内存
+            self.agents[name] = {
+                'name': name,
+                'agent_type': agent_type,
+                'description': description,
+                'function': agent_func,
+                'code': code,
+                'category': category,
+                'icon': icon
+            }
+            
+            print(f"✓ Agent '{name}' 注册到内存成功")
+            return True
+            
+        except Exception as e:
+            print(f"✗ 注册Agent '{name}' 到内存失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
     
     def get_agent(self, name: str) -> Optional[Dict]:
         return self.agents.get(name)
@@ -263,29 +308,48 @@ class AgentExecutor:
         agent_name: str,
         params: Dict[str, Any],
         context: Dict[str, Any] = None,
-        execution_id: int = None
+        execution_id: int = None,
+        timeout: int = 120  # 默认超时120秒
     ) -> Dict[str, Any]:
-        """执行 Agent"""
+        """执行 Agent（带超时机制）"""
         start_time = time.time()
         parent_log_id = self.execution_stack[-1] if self.execution_stack else None
         
         try:
-            print(f"[AgentExecutor] 开始执行 Agent: {agent_name}")
+            print(f"[AgentExecutor] 开始执行 Agent: {agent_name} (超时: {timeout}秒)")
             
             agent = self.registry.get_agent(agent_name)
             if not agent:
                 raise Exception(f"Agent '{agent_name}' 不存在")
             
             # 解析参数
+            print(f"[AgentExecutor] 解析参数中...")
             resolved_params = self._resolve_params(params, context or {})
+            print(f"[AgentExecutor] 参数解析完成")
             
-            # 如果是 AI Agent，调用 LLM
-            if agent['agent_type'] == 'ai_analyzer' and agent.get('llm_model'):
-                result = self._execute_ai_agent(agent, resolved_params)
-            else:
-                # 普通 Agent，直接调用函数
-                func = agent['function']
-                result = func(**resolved_params)
+            # 使用线程池执行，带超时
+            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+            
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                print(f"[AgentExecutor] 提交Agent执行任务...")
+                
+                # 如果是 AI Agent，调用 LLM
+                if agent['agent_type'] == 'ai_analyzer' and agent.get('llm_model'):
+                    future = executor.submit(self._execute_ai_agent, agent, resolved_params)
+                else:
+                    # 普通 Agent，直接调用函数
+                    func = agent['function']
+                    future = executor.submit(func, **resolved_params)
+                
+                try:
+                    # 等待执行结果，带超时
+                    result = future.result(timeout=timeout)
+                    print(f"[AgentExecutor] Agent执行返回结果")
+                    
+                except FutureTimeoutError:
+                    print(f"[AgentExecutor] ⚠️ Agent执行超时！({timeout}秒)")
+                    future.cancel()
+                    raise Exception(f"Agent执行超时（{timeout}秒）。可能原因：\n1. LLM响应太慢\n2. Agent代码有死循环\n3. 网络连接问题")
             
             # 记录日志
             execution_time = time.time() - start_time
@@ -324,6 +388,7 @@ class AgentExecutor:
             )
             
             print(f"[AgentExecutor] Agent '{agent_name}' 执行失败: {error_msg}")
+            print(f"[AgentExecutor] 总耗时: {execution_time:.2f}s")
             
             return {
                 'success': False,
@@ -404,6 +469,71 @@ class WorkflowEngine:
         self.db = db
         self.executor = agent_executor
     
+    def _extract_json_path(self, json_path: str, context: Dict, input_data: Dict) -> Any:
+        """
+        从context中提取JSON Path指定的值
+        
+        支持的格式：
+        - $.input → 返回整个input_data
+        - $.input.keyword → 返回input_data['keyword']
+        - $.数据爬取 → 返回context['数据爬取_result']
+        - $.数据爬取.result.products_data → 返回context['数据爬取_result']['result']['products_data']
+        """
+        if not json_path or not json_path.startswith('$.'):
+            return None
+        
+        # 移除 $. 前缀
+        path = json_path[2:]
+        
+        # 处理 $.input 开头的路径
+        if path == 'input':
+            return input_data
+        elif path.startswith('input.'):
+            # $.input.keyword → input_data['keyword']
+            keys = path.split('.')[1:]  # 去掉'input'
+            value = input_data
+            for key in keys:
+                if isinstance(value, dict) and key in value:
+                    value = value[key]
+                else:
+                    return None
+            return value
+        
+        # 处理 $.agent_name 开头的路径
+        # $.数据爬取 → context['数据爬取_result']
+        # $.数据爬取.result.products_data → context['数据爬取_result']['result']['products_data']
+        parts = path.split('.')
+        agent_name = parts[0]
+        
+        # 在context中查找agent的输出（尝试多种key格式）
+        possible_keys = [
+            f"{agent_name}_result",  # 标准格式
+            agent_name,              # 直接使用agent名称
+            f"{agent_name}_output"   # 备用格式
+        ]
+        
+        value = None
+        for key in possible_keys:
+            if key in context:
+                value = context[key]
+                break
+        
+        if value is None:
+            return None
+        
+        # 如果只是 $.agent_name，返回整个结果
+        if len(parts) == 1:
+            return value
+        
+        # 否则，遍历嵌套路径
+        for key in parts[1:]:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return None
+        
+        return value
+    
     def execute_workflow(
         self,
         workflow_id: int,
@@ -452,21 +582,36 @@ class WorkflowEngine:
             for i, node in enumerate(execution_order, 1):
                 agent_name = node['agent']
                 node_params = node.get('params', {})
+                input_mapping = node.get('input_mapping', {})
+                output_key = node.get('output_key', f"{agent_name}_output")
                 
-                # 如果 node params 为空，使用 context 中的参数
-                if not node_params and i == 1:
+                # 🔧 修复：使用input_mapping从context中提取参数
+                if input_mapping:
+                    params = {}
+                    for param_name, json_path in input_mapping.items():
+                        # 完整的JSON Path解析，支持嵌套访问
+                        value = self._extract_json_path(json_path, context, input_data)
+                        if value is not None:
+                            params[param_name] = value
+                    print(f"[{i}/{len(execution_order)}] 执行 Agent: {agent_name}")
+                    print(f"  使用input_mapping: {input_mapping}")
+                    print(f"  提取的参数: {list(params.keys())} = {params}")
+                elif node_params:
+                    # 使用显式指定的参数
+                    params = node_params
+                    print(f"[{i}/{len(execution_order)}] 执行 Agent: {agent_name}")
+                    print(f"  使用node_params: {list(params.keys())}")
+                elif i == 1:
                     # 第一个 Agent，使用 input_data
                     params = input_data.copy()
-                elif not node_params:
+                    print(f"[{i}/{len(execution_order)}] 执行 Agent: {agent_name}")
+                    print(f"  使用input_data: {list(params.keys())}")
+                else:
                     # 后续 Agent，使用上一个 Agent 的输出
                     prev_result_key = f"{execution_order[i-2]['agent']}_result"
                     params = {'data': context.get(prev_result_key, {})}
-                else:
-                    # 使用显式指定的参数
-                    params = node_params
-                
-                print(f"[{i}/{len(execution_order)}] 执行 Agent: {agent_name}")
-                print(f"  参数: {list(params.keys())}")
+                    print(f"[{i}/{len(execution_order)}] 执行 Agent: {agent_name}")
+                    print(f"  使用上一个Agent输出")
                 
                 node_start = time.time()
                 result = self.executor.execute(
@@ -582,17 +727,25 @@ class WorkflowEngine:
                     result.append({'agent': agent_name, 'params': {}})
                 continue
             
-            # 新格式：字典
+            # 新格式：字典（支持两种字段名）
             if isinstance(step, dict):
-                agent_name = step.get('agent')
+                # 支持 'agent_name' 或 'agent' 字段
+                agent_name = step.get('agent_name') or step.get('agent')
                 params = step.get('params', {})
+                input_mapping = step.get('input_mapping', {})
+                output_key = step.get('output_key', '')
+                
+                if not agent_name:
+                    raise Exception(f"Workflow step 缺少 'agent_name' 或 'agent' 字段: {step}")
                 
                 if agent_name not in agents:
                     raise Exception(f"Agent '{agent_name}' 不在 agents 列表中")
                 
                 result.append({
                     'agent': agent_name,
-                    'params': params
+                    'params': params,
+                    'input_mapping': input_mapping,
+                    'output_key': output_key
                 })
         
         return result

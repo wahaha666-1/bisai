@@ -1843,42 +1843,58 @@ def {agent_name}(input_data: dict) -> dict:
             if llm.is_configured():
                 prompt = f"""请为文章《{selected_theme}》撰写详细的内容大纲。
 
-要求：
-- 主题关键词：{keyword}
-- 目标读者：{target_audience}
-- 包含：引言、3-5个核心章节、总结
-- 每个章节要有清晰的主题和内容要点
+主题：{selected_theme}
+关键词：{keyword}
+目标读者：{target_audience}
 
-请以JSON格式返回。"""
+要求：
+1. 包含引言、3-5个核心章节、总结
+2. 每个章节要有清晰的标题和内容要点
+3. 内容要与"{keyword}"紧密相关
+
+请严格按照以下JSON格式返回：
+{{
+  "title": "文章标题",
+  "introduction": "引言内容（100-200字）",
+  "sections": [
+    {{"title": "章节标题", "content": "章节要点说明"}},
+    {{"title": "章节标题", "content": "章节要点说明"}}
+  ],
+  "conclusion": "总结内容（100-200字）"
+}}"""
 
                 response = llm.chat([
-                    {'role': 'system', 'content': '你是一个专业的内容策划师。'},
+                    {'role': 'system', 'content': f'你是一个专业的{target_audience}内容策划师，擅长{keyword}相关主题。'},
                     {'role': 'user', 'content': prompt}
                 ], temperature=0.7)
                 
                 if response['success']:
                     import json, re
                     content = response['content'].strip()
-                    json_match = re.search(r'\\{[\\s\\S]*\\}', content)
+                    json_match = re.search(r'\\{{[\\s\\S]*?\\}}', content)
                     if json_match:
                         outline = json.loads(json_match.group())
-                        return {'success': True, 'result': outline}
+                        # 确保格式正确
+                        if 'title' in outline and 'sections' in outline:
+                            return {{'success': True, 'result': outline}}
         except Exception as e:
-            print(f"[大纲撰写] LLM调用失败: {e}")
+            print(f"[大纲撰写] LLM调用失败: {{e}}")
         
-        outline = {
+        # 降级方案：生成符合格式的默认大纲
+        outline = {{
             'title': selected_theme,
-            'introduction': f'本文将全面探讨{keyword}相关主题。',
+            'introduction': f'本文将为{{target_audience}}全面解析{{keyword}}的核心内容，从多个维度深入探讨{{keyword}}的魅力与价值。',
             'sections': [
-                {'title': f'{keyword}核心概念与定义', 'content': f'详细介绍{keyword}的基本概念'},
-                {'title': f'{keyword}现状与趋势', 'content': f'分析{keyword}当前发展状况'},
-                {'title': f'{keyword}实践应用', 'content': f'展示{keyword}应用案例'}
+                {{'title': f'{{keyword}}核心概念解析', 'content': f'详细介绍{{keyword}}的基本概念、特点和重要性'}},
+                {{'title': f'{{keyword}}深度剖析', 'content': f'从专业角度分析{{keyword}}的核心要素和关键机制'}},
+                {{'title': f'{{keyword}}实践应用', 'content': f'展示{{keyword}}的实际应用场景和最佳实践'}},
+                {{'title': f'{{keyword}}进阶指南', 'content': f'为{{target_audience}}提供进阶技巧和深入理解'}}
             ],
-            'conclusion': f'总结{keyword}的核心价值。'
-        }
-        return {'success': True, 'result': outline}
+            'conclusion': f'总结{{keyword}}的核心价值，展望未来发展方向，为{{target_audience}}提供实用建议。'
+        }}
+        return {{'success': True, 'result': outline}}
     except Exception as e:
-        return {'success': False, 'error': str(e)}''',
+        return {{'success': False, 'error': str(e)}}''',
             
             '内容创作': '''def 内容创作(input_data: dict) -> dict:
     """使用AI根据大纲生成完整的高质量文章"""

@@ -309,7 +309,7 @@ class AgentExecutor:
         params: Dict[str, Any],
         context: Dict[str, Any] = None,
         execution_id: int = None,
-        timeout: int = 120  # 默认超时120秒
+        timeout: int = 300  # 默认超时300秒（5分钟），适应LLM生成长内容
     ) -> Dict[str, Any]:
         """执行 Agent（带超时机制）"""
         start_time = time.time()

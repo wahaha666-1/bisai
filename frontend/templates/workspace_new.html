@@ -374,6 +374,11 @@
             from { transform: translateY(50px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -652,6 +657,12 @@
             await typeExecutionMessage(`🚀 开始执行工作流：${workflowName}\n\n`);
             await typeExecutionMessage('📝 输入参数：\n');
             await typeExecutionMessage(JSON.stringify(params, null, 2) + '\n\n');
+            
+            // 温馨提示
+            if (workflowName.includes('内容创作') || workflowName.includes('全栈') || workflowName.includes('文章')) {
+                await typeExecutionMessage('💡 温馨提示：AI内容生成可能需要 2-3 分钟，请耐心等待...\n\n');
+            }
+            
             await typeExecutionMessage('⏳ 正在调用Agent...\n');
             
             updateExecutionProgress(30);
@@ -670,6 +681,10 @@
                 const result = await response.json();
                 updateExecutionProgress(100);
                 
+                // 隐藏加载提示框
+                const tipBox = document.getElementById('loading-tip-box');
+                if (tipBox) tipBox.style.display = 'none';
+                
                 if (result.success) {
                     await typeExecutionMessage('🎉 执行成功！\n\n');
                     // 显示详细结果
@@ -678,6 +693,10 @@
                     await typeExecutionMessage(`❌ 执行失败：${result.error}\n`);
                 }
             } catch (error) {
+                // 隐藏加载提示框
+                const tipBox = document.getElementById('loading-tip-box');
+                if (tipBox) tipBox.style.display = 'none';
+                
                 await typeExecutionMessage(`❌ 错误：${error.message}\n`);
             }
         }
@@ -717,6 +736,19 @@
                     </div>
                     
                     <div style="padding: 24px; flex: 1; overflow-y: auto;">
+                        <!-- 友好提示框 -->
+                        <div id="loading-tip-box" style="
+                            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+                            border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px;
+                            margin-bottom: 20px; display: flex; align-items: center; gap: 12px;
+                        ">
+                            <div style="font-size: 24px; animation: spin 2s linear infinite;">⏳</div>
+                            <div>
+                                <div style="color: #92400e; font-weight: 600; font-size: 14px; margin-bottom: 4px;">正在生成内容...</div>
+                                <div style="color: #78350f; font-size: 13px;">AI内容生成通常需要 2-3 分钟，请耐心等待，系统正在努力工作中 ✨</div>
+                            </div>
+                        </div>
+                        
                         <div style="margin-bottom: 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                 <span style="color: #6b7280; font-size: 14px;">执行进度</span>

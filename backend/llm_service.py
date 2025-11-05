@@ -129,7 +129,7 @@ class DeepSeekLLM:
                 headers=headers,
                 json=data,
                 stream=stream,  # 这个参数很关键！
-                timeout=(10, 60)  # (连接超时, 读取超时)
+                timeout=(10, 180)  # (连接超时10秒, 读取超时180秒) - 适应长文本生成
             )
             
             request_time = time.time() - request_start
@@ -201,7 +201,7 @@ class DeepSeekLLM:
         except requests.exceptions.Timeout:
             return {
                 'success': False,
-                'error': 'DeepSeek API 响应超时（60秒）\n\n可能原因：\n1. 网络连接不稳定\n2. DeepSeek 服务器响应慢\n3. 需要配置代理\n\n建议：\n- 检查网络连接\n- 稍后重试\n- 如在国内，可能需要配置代理',
+                'error': 'DeepSeek API 响应超时（180秒）\n\n可能原因：\n1. 网络连接不稳定\n2. DeepSeek 服务器响应慢\n3. 需要配置代理\n4. 请求生成的内容过长\n\n建议：\n- 检查网络连接\n- 稍后重试\n- 如在国内，可能需要配置代理\n- 减少max_tokens参数',
                 'error_type': 'timeout'
             }
         except requests.exceptions.ConnectionError:
@@ -255,7 +255,7 @@ class DeepSeekLLM:
                 headers=headers,
                 json=data,
                 stream=True,
-                timeout=60
+                timeout=180  # 读取超时180秒，适应长文本生成
             )
             
             if response.status_code == 200:

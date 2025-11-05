@@ -1606,10 +1606,10 @@ def upgrade_agents_to_ai():
             else:
                 input_str = str(user_input)
             
-            prompt = f"""任务：{agent_description or '处理用户请求'}
+            prompt = f"""任务：{{agent_description or '处理用户请求'}}
 
 用户输入：
-{input_str}
+{{input_str}}
 
 要求：
 1. 根据用户输入和任务描述，生成相关的处理结果
@@ -1617,7 +1617,7 @@ def upgrade_agents_to_ai():
 3. 以JSON格式返回结果"""
             
             response = llm.chat([
-                {{'role': 'system', 'content': f'你是一个专业的AI助手。任务：{agent_description}'}},
+                {{'role': 'system', 'content': f'你是一个专业的AI助手。任务：{{agent_description}}'}},
                 {{'role': 'user', 'content': prompt}}
             ], temperature=0.7, max_tokens=3000)
             

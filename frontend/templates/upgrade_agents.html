@@ -386,7 +386,7 @@
     </div>
     
     <script>
-        // 加载Agent列表
+        // 加载Agent列表（自动检测AI状态）
         async function loadAgents() {
             try {
                 const response = await fetch('/api/agents');
@@ -399,28 +399,44 @@
                     return;
                 }
                 
-                // 内容创作相关的Agent
-                const contentAgents = ['主题生成', '大纲撰写', '内容创作', 'seo优化'];
+                // 🔥 并行检查所有Agent的AI状态
+                const statusPromises = agents.map(agent => 
+                    fetch(`/api/agents/${encodeURIComponent(agent.name)}/ai-status`)
+                        .then(r => r.json())
+                        .then(data => ({ name: agent.name, ai_powered: data.ai_powered, upgraded_at: data.upgraded_at }))
+                        .catch(() => ({ name: agent.name, ai_powered: false }))
+                );
+                
+                const statuses = await Promise.all(statusPromises);
+                const statusMap = Object.fromEntries(statuses.map(s => [s.name, s]));
                 
                 listDiv.innerHTML = agents.map(agent => {
-                    const isContentAgent = contentAgents.includes(agent.name);
-                    const status = isContentAgent ? 'template' : 'unknown';
+                    const aiStatus = statusMap[agent.name];
+                    const isAiPowered = aiStatus?.ai_powered || false;
                     
                     return `
                         <div class="agent-item">
                             <div class="agent-info">
                                 <div class="agent-name">
                                     ${agent.icon || '🤖'} ${agent.name}
-                                    ${status === 'template' ? '<span class="badge badge-template">模板</span>' : ''}
+                                    ${isAiPowered 
+                                        ? '<span class="badge badge-ai">✨ AI驱动</span>' 
+                                        : '<span class="badge badge-template">需要升级</span>'}
                                 </div>
-                                <div class="agent-status">${agent.description || '暂无描述'}</div>
+                                <div class="agent-status">
+                                    ${agent.description || '暂无描述'}
+                                    ${isAiPowered && aiStatus.upgraded_at ? ` (升级于: ${new Date(aiStatus.upgraded_at).toLocaleString('zh-CN')})` : ''}
+                                </div>
                             </div>
-                            ${status === 'template' ? '<button class="btn btn-primary" onclick="upgradeSingle(\''+agent.name+'\')">升级到AI</button>' : ''}
+                            ${!isAiPowered 
+                                ? `<button class="btn btn-primary" onclick="upgradeSingle('${agent.name}')">升级到AI</button>` 
+                                : '<span style="color: #10b981; font-weight: 600;">✅ 已升级</span>'}
                         </div>
                     `;
                 }).join('');
             } catch (error) {
                 console.error('加载失败:', error);
+                listDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: #e53e3e;">加载失败，请刷新重试</div>';
             }
         }
         
@@ -474,16 +490,37 @@
             }
         }
         
-        // 一键升级所有
+        // 一键升级所有（自动检测需要升级的Agent）
         async function upgradeAll() {
-            if (!confirm('确定要升级所有模板Agent为AI驱动版本吗？')) {
+            // 🔥 先获取所有Agent并检查状态
+            const response = await fetch('/api/agents');
+            const allAgents = await response.json();
+            
+            // 检查哪些Agent需要升级
+            const statusPromises = allAgents.map(agent => 
+                fetch(`/api/agents/${encodeURIComponent(agent.name)}/ai-status`)
+                    .then(r => r.json())
+                    .then(data => ({ name: agent.name, ai_powered: data.ai_powered }))
+                    .catch(() => ({ name: agent.name, ai_powered: false }))
+            );
+            const statuses = await Promise.all(statusPromises);
+            
+            // 筛选出需要升级的Agent
+            const agentsToUpgrade = statuses.filter(s => !s.ai_powered).map(s => s.name);
+            
+            if (agentsToUpgrade.length === 0) {
+                alert('所有Agent都已经是AI驱动版本了！');
+                return;
+            }
+            
+            if (!confirm(`发现 ${agentsToUpgrade.length} 个Agent需要升级：\n${agentsToUpgrade.join(', ')}\n\n确定要升级吗？`)) {
                 return;
             }
             
             // 立即显示升级模态框
             showUpgradeModal();
             
-            const agents = ['主题生成', '大纲撰写', '内容创作', 'seo优化'];
+            const agents = agentsToUpgrade;
             let completed = 0;
             
             // 流式输出：逐字打印初始消息

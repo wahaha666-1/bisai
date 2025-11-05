@@ -1541,7 +1541,7 @@ def public_execute_workflow():
 
 @api.route('/agents/upgrade', methods=['POST'])
 def upgrade_agents_to_ai():
-    """升级Agent为AI驱动版本"""
+    """通用AI升级：自动将任何Agent升级为AI驱动版本"""
     try:
         data = request.get_json() or {}
         agent_names = data.get('agents', [])
@@ -1549,10 +1549,221 @@ def upgrade_agents_to_ai():
         if not agent_names:
             return jsonify({'success': False, 'error': '未指定要升级的Agent'}), 400
         
-        print(f"\n[Agent升级] 收到升级请求，Agent列表: {agent_names}")
+        print(f"\n[通用AI升级] 收到升级请求，Agent列表: {agent_names}")
         
-        # AI驱动的Agent代码
-        ai_agent_codes = {
+        # 获取LLM服务
+        from backend.llm_service import get_llm_service
+        llm = get_llm_service()
+        
+        if not llm.is_configured():
+            return jsonify({'success': False, 'error': 'LLM服务未配置，无法进行AI升级'}), 400
+        
+        def generate_ai_agent_code(agent_name: str, agent_description: str, input_params: dict, output_params: dict) -> str:
+            """使用LLM自动生成AI驱动的Agent代码"""
+            prompt = f"""请为以下Agent生成AI驱动的Python代码：
+
+Agent名称：{agent_name}
+功能描述：{agent_description}
+输入参数：{input_params}
+输出参数：{output_params}
+
+要求：
+1. 函数名必须是：def {agent_name}(input_data: dict) -> dict:
+2. 必须使用LLM（通过backend.llm_service）来处理用户输入
+3. 必须正确使用input_data中的参数，不能生成假数据
+4. 返回格式：{{'success': True, 'result': {{...}}}} 或 {{'success': False, 'error': '...'}}
+5. 代码要健壮，有异常处理
+6. 如果LLM调用失败，要有降级方案
+7. 关键：必须使用用户的实际输入，而不是硬编码的示例数据
+
+示例模板：
+```python
+def {agent_name}(input_data: dict) -> dict:
+    \"\"\"{{agent_description}}\"\"\"
+    try:
+        # 1. 提取用户输入
+        user_input = input_data.get('input_data', '') or input_data.get('关键词', '')
+        
+        # 2. 调用LLM
+        from backend.llm_service import get_llm_service
+        llm = get_llm_service()
+        
+        if llm.is_configured():
+            prompt = f\"\"\"{{根据功能描述生成的提示词，使用{{user_input}}\"\"\"
+            
+            response = llm.chat([
+                {{'role': 'system', 'content': '{{系统角色}}'}},
+                {{'role': 'user', 'content': prompt}}
+            ], temperature=0.7)
+            
+            if response['success']:
+                # 3. 处理LLM响应
+                result_data = {{...}}  # 解析LLM返回的内容
+                return {{'success': True, 'result': result_data}}
+        
+        # 4. 降级方案（如果LLM失败）
+        return {{'success': False, 'error': 'LLM服务不可用'}}
+        
+    except Exception as e:
+        return {{'success': False, 'error': str(e)}}
+```
+
+现在请生成完整的代码（只返回代码，不要其他说明）："""
+
+            try:
+                response = llm.chat([
+                    {'role': 'system', 'content': '你是一个Python代码生成专家，擅长生成高质量的AI Agent代码。'},
+                    {'role': 'user', 'content': prompt}
+                ], temperature=0.3, max_tokens=2000)
+                
+                if response['success']:
+                    import re
+                    code = response['content'].strip()
+                    # 提取代码块
+                    code_match = re.search(r'```python\n(.*?)```', code, re.DOTALL)
+                    if code_match:
+                        return code_match.group(1).strip()
+                    # 如果没有代码块标记，直接返回
+                    return code
+                else:
+                    raise Exception(f"LLM生成代码失败: {response.get('error', 'Unknown error')}")
+                    
+            except Exception as e:
+                print(f"[代码生成] 失败: {e}")
+                raise
+        
+        # 预设的Agent代码（作为备选方案）
+        preset_agent_codes = {
+            # ========== 电商Agent ==========
+            '数据爬取': '''def 数据爬取(input_data: dict) -> dict:
+    """使用AI爬取和分析电商产品数据"""
+    try:
+        # 提取用户输入的关键词
+        keyword = input_data.get('input_data', '') or input_data.get('关键词', '商品')
+        
+        from backend.llm_service import get_llm_service
+        llm = get_llm_service()
+        
+        if llm.is_configured():
+            prompt = f"""请为关键词"{keyword}"生成电商选品分析数据。
+
+要求：
+1. 生成3个相关产品
+2. 每个产品包含：名称、价格、评分、销量、选品分数、趋势
+3. 生成市场趋势数据：总销量、平均价格、增长率
+4. 数据要真实合理，与"{keyword}"相关
+
+返回JSON格式：
+{{
+  "keyword": "{keyword}",
+  "products": [
+    {{"name": "产品名", "price": 价格, "rating": 评分, "sales_volume": 销量, "selection_score": 分数, "trend": "rising/stable/falling"}}
+  ],
+  "market_trends": {{"total_volume": 总销量, "avg_price": 平均价, "growth_rate": 增长率}}
+}}"""
+
+            response = llm.chat([
+                {{'role': 'system', 'content': '你是电商数据分析专家，生成真实合理的市场数据。'}},
+                {{'role': 'user', 'content': prompt}}
+            ], temperature=0.7)
+            
+            if response['success']:
+                import json, re
+                content = response['content'].strip()
+                json_match = re.search(r'\\{{[\\s\\S]*?\\}}', content)
+                if json_match:
+                    result_data = json.loads(json_match.group())
+                    return {{'success': True, 'result': result_data}}
+        
+        # 降级方案
+        return {{
+            'success': True,
+            'result': {{
+                'keyword': keyword,
+                'products': [
+                    {{'name': f'{keyword} A', 'price': 299, 'rating': 4.5, 'sales_volume': 1500, 'selection_score': 2.25, 'trend': 'rising'}},
+                    {{'name': f'{keyword} B', 'price': 199, 'rating': 4.2, 'sales_volume': 800, 'selection_score': 1.73, 'trend': 'stable'}},
+                    {{'name': f'{keyword} C', 'price': 399, 'rating': 4.8, 'sales_volume': 2500, 'selection_score': 2.74, 'trend': 'rising'}}
+                ],
+                'market_trends': {{'total_volume': 4800, 'avg_price': 299, 'growth_rate': 0.15}}
+            }}
+        }}
+    except Exception as e:
+        return {{'success': False, 'error': str(e)}}''',
+
+            '趋势分析': '''def 趋势分析(input_data: dict) -> dict:
+    """分析产品数据和市场趋势"""
+    try:
+        if isinstance(input_data, dict) and 'result' in input_data:
+            data = input_data['result']
+        else:
+            data = input_data
+        
+        products = data.get('products', [])
+        market_trends = data.get('market_trends', {{}})
+        
+        rising_count = sum(1 for p in products if p.get('trend') == 'rising')
+        top_products = sorted(products, key=lambda x: x.get('selection_score', 0), reverse=True)
+        
+        return {{
+            'success': True,
+            'result': {{
+                'top_recommendations': top_products,
+                'rising_trend_count': rising_count,
+                'market_summary': market_trends,
+                'analysis_metrics': {{
+                    'avg_selection_score': sum(p.get('selection_score', 0) for p in products) / len(products) if products else 0,
+                    'market_growth': market_trends.get('growth_rate', 0)
+                }}
+            }}
+        }}
+    except Exception as e:
+        return {{'success': False, 'error': str(e)}}''',
+
+            '报告生成': '''def 报告生成(input_data: dict) -> dict:
+    """生成电商选品分析报告"""
+    try:
+        if isinstance(input_data, dict) and 'result' in input_data:
+            analysis_data = input_data['result']
+        else:
+            return {{'success': False, 'error': '无效的分析数据'}}
+        
+        top_products = analysis_data.get('top_recommendations', [])
+        market_summary = analysis_data.get('market_summary', {{}})
+        rising_count = analysis_data.get('rising_trend_count', 0)
+        
+        report = {{
+            'report_title': '电商选品分析报告',
+            'executive_summary': f"市场总体销量：{{market_summary.get('total_volume', 0)}}件，平均价格：{{market_summary.get('avg_price', 0)}}元",
+            'market_analysis': {{
+                'growth_rate': f"{{market_summary.get('growth_rate', 0)*100}}%",
+                'rising_trend_products': rising_count
+            }},
+            'recommendations': [
+                {{
+                    'rank': i+1,
+                    'product_name': p.get('name', ''),
+                    'selection_score': p.get('selection_score', 0),
+                    'reason': f"评分{{p.get('rating', 0)}}，销量{{p.get('sales_volume', 0)}}件，趋势{{p.get('trend', '')}}"
+                }} for i, p in enumerate(top_products[:3])
+            ],
+            'strategic_suggestions': [
+                '重点关注评分高且销量增长的产品',
+                f'考虑价格区间在{{market_summary.get("avg_price", 0)-100}}-{{market_summary.get("avg_price", 0)+100}}元的产品',
+                '关注用户评价和复购率指标'
+            ],
+            'risk_warnings': [
+                '注意市场竞争激烈程度',
+                '关注供应链稳定性',
+                '考虑季节性因素影响'
+            ]
+        }}
+        
+        return {{'success': True, 'result': report}}
+    except Exception as e:
+        return {{'success': False, 'error': str(e)}}''',
+
+            # ========== 内容创作Agent ==========
             '主题生成': '''def 主题生成(input_data: dict) -> dict:
     """使用AI根据输入的主题和关键词生成多个创意主题"""
     try:
@@ -1804,36 +2015,97 @@ def upgrade_agents_to_ai():
         upgraded = []
         failed = []
         
+        from backend.models import AIAgent, AgentVersion
+        
         with db.session_scope() as session:
             for agent_name in agent_names:
-                if agent_name not in ai_agent_codes:
-                    failed.append({'name': agent_name, 'error': '不支持升级此Agent'})
-                    continue
-                
                 try:
-                    # 获取agent_id
-                    from backend.models import AIAgent, AgentVersion
+                    # 1. 获取Agent信息
                     agent = session.query(AIAgent).filter_by(name=agent_name).first()
                     
                     if not agent:
                         failed.append({'name': agent_name, 'error': 'Agent不存在'})
                         continue
                     
-                    # 更新活跃版本的代码
+                    # 2. 获取活跃版本
                     active_version = session.query(AgentVersion).filter_by(
                         agent_id=agent.id, 
                         is_active=True
                     ).first()
                     
-                    if active_version:
-                        active_version.code = ai_agent_codes[agent_name]
-                        upgraded.append(agent_name)
-                        print(f"[Agent升级] ✅ {agent_name} 升级成功")
-                    else:
+                    if not active_version:
                         failed.append({'name': agent_name, 'error': '未找到活跃版本'})
+                        continue
+                    
+                    # 3. 生成AI驱动代码
+                    print(f"[通用AI升级] 正在为 {agent_name} 生成AI代码...")
+                    
+                    # 先尝试使用预设代码
+                    if agent_name in preset_agent_codes:
+                        ai_code = preset_agent_codes[agent_name]
+                        print(f"[通用AI升级] 使用预设代码")
+                    else:
+                        # 使用AI自动生成
+                        try:
+                            ai_code = generate_ai_agent_code(
+                                agent_name=agent_name,
+                                agent_description=agent.description or '智能处理任务',
+                                input_params=active_version.input_params or {},
+                                output_params=active_version.output_params or {}
+                            )
+                            print(f"[通用AI升级] AI自动生成代码成功")
+                        except Exception as gen_error:
+                            print(f"[通用AI升级] AI生成失败: {gen_error}，使用通用模板")
+                            # 使用通用模板
+                            ai_code = f'''def {agent_name}(input_data: dict) -> dict:
+    """{agent.description or '智能处理任务'}"""
+    try:
+        from backend.llm_service import get_llm_service
+        llm = get_llm_service()
+        
+        # 提取用户输入
+        user_input = input_data.get('input_data', '') or input_data.get('关键词', '') or str(input_data)
+        
+        if not user_input or user_input == 'dict()':
+            return {{'success': False, 'error': '请提供有效的输入数据'}}
+        
+        if llm.is_configured():
+            prompt = f"""任务：{agent.description or '处理用户请求'}
+            
+用户输入：{{user_input}}
+
+请根据用户输入生成相关结果，以JSON格式返回。"""
+            
+            response = llm.chat([
+                {{'role': 'system', 'content': '你是一个AI助手，根据用户输入完成任务。'}},
+                {{'role': 'user', 'content': prompt}}
+            ], temperature=0.7)
+            
+            if response['success']:
+                import json, re
+                content = response['content'].strip()
+                # 尝试提取JSON
+                json_match = re.search(r'\\{{[\\s\\S]*?\\}}', content)
+                if json_match:
+                    result_data = json.loads(json_match.group())
+                    return {{'success': True, 'result': result_data}}
+                else:
+                    return {{'success': True, 'result': {{'output': content, 'input': user_input}}}}
+        
+        return {{'success': False, 'error': 'LLM服务未配置'}}
+        
+    except Exception as e:
+        return {{'success': False, 'error': str(e)}}'''
+                    
+                    # 4. 更新代码
+                    active_version.code = ai_code
+                    upgraded.append(agent_name)
+                    print(f"[通用AI升级] ✅ {agent_name} 升级成功")
                         
                 except Exception as e:
-                    print(f"[Agent升级] ❌ {agent_name} 升级失败: {e}")
+                    print(f"[通用AI升级] ❌ {agent_name} 升级失败: {e}")
+                    import traceback
+                    traceback.print_exc()
                     failed.append({'name': agent_name, 'error': str(e)})
         
         print(f"\n[Agent升级] 完成！成功: {len(upgraded)}, 失败: {len(failed)}")

@@ -1647,7 +1647,7 @@ def upgrade_agents_to_ai():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {{'success': False, 'error': f'执行失败: {{str(e)}}'}}'}}'''
+        return {{'success': False, 'error': f'执行失败: {{str(e)}}'}}'''
             
             return template
         

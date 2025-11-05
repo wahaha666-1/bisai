@@ -578,7 +578,7 @@
             if (result.execution_graph && Array.isArray(result.execution_graph) && result.execution_graph.length > 0) {
                 executionGraphHTML = `
                     <div style="margin-bottom: 24px;">
-                        <div style="font-weight: 600; color: #374151; margin-bottom: 16px; font-size: 16px;">🔄 执行流程（Dify风格）</div>
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 16px; font-size: 16px;">🔄 执行流程</div>
                         ${result.execution_graph.map((step, index) => {
                             const stepStatus = step.status === 'completed' ? '✅' : '❌';
                             const stepColor = step.status === 'completed' ? '#10b981' : '#ef4444';

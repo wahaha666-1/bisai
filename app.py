@@ -189,7 +189,7 @@ def tools_page():
 
 @app.route('/workflow-editor')
 def workflow_editor():
-    """工作流可视化编辑器（Dify风格）"""
+    """工作流可视化编辑器"""
     return render_template('workflow_editor.html')
 
 @app.route('/upgrade-agents')
